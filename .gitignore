@@ -1,0 +1,61 @@
+# ─── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Expo ──────────────────────────────────────────────────────────────────────
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# ─── EAS ───────────────────────────────────────────────────────────────────────
+*.ipa
+*.apk
+*.aab
+
+# ─── Environment / Secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.p8
+*.p12
+keystore.properties
+
+# ─── Native build directories ──────────────────────────────────────────────────
+android/
+ios/
+.gradle/
+.jdk/
+
+# ─── OS junk ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ─── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ─── Test output ───────────────────────────────────────────────────────────────
+coverage/
+.jest-cache/
+
+# ─── Metro bundler ─────────────────────────────────────────────────────────────
+.metro-health-check*
+
+# ─── Misc ──────────────────────────────────────────────────────────────────────
+*.orig
+*.orig.*
+*.mobileprovision
+*.jks
+*.log
