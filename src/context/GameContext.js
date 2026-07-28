@@ -52,7 +52,19 @@ export function reducer(state, action) {
       return { ...state, allowGhostVotes: action.value };
     case 'START_GAME': {
       const roles = getRoleAssignment(action.players.length, state.villainCount);
-      const playersWithRoles = action.players.map((p, i) => ({ ...p, role: roles[i], isAlive: true }));
+      // Each VILLAIN player draws their own theme from the selected set (mixed-villain
+      // mode). Other roles have no theme override — their flavor always comes from the
+      // single active villainThemeId, since good roles aren't faction-specific.
+      const themePool = (state.selectedThemeIds && state.selectedThemeIds.length) ? state.selectedThemeIds : [state.villainThemeId];
+      const playersWithRoles = action.players.map((p, i) => {
+        const role = roles[i];
+        return {
+          ...p,
+          role,
+          isAlive: true,
+          villainThemeOverride: role === 'VILLAIN' ? themePool[Math.floor(Math.random() * themePool.length)] : null,
+        };
+      });
       // Preserve selectedThemeIds so multi-theme selections survive into the game
       return { ...initialState, villainThemeId: state.villainThemeId, selectedThemeIds: state.selectedThemeIds, knowsAllies: state.knowsAllies, villainCount: state.villainCount, allowGhostVotes: state.allowGhostVotes, players: playersWithRoles, phase: 'ROLE_REVEAL', round: 0 };
     }

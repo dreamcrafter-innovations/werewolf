@@ -43,7 +43,9 @@ export async function saveProfiles(profiles) {
 }
 
 // ─────────────────────────────────────────────
-// Settings  { themeId, soundEnabled, hapticsEnabled, narratorEnabled }
+// Settings  { themeId, hapticsEnabled, narratorEnabled }
+// (soundEnabled was removed — no sound assets/audio library exist yet; re-add here
+// once real sound effects are wired up)
 // ─────────────────────────────────────────────
 export async function loadSettings() {
   try {
@@ -134,7 +136,7 @@ export async function recordRoundResult({ players, winner, villainThemeId }) {
     for (const p of players) {
       if (!p.id) continue;
       const existing = session.playerStats[p.id] ?? { name: p.name, wins: 0, losses: 0, roundsPlayed: 0, evilWins: 0 };
-      const isEvil = p.role === 'VILLAIN';
+      const isEvil = p.role === 'VILLAIN' || p.role === 'DON';
       const won    = (isEvil && winner === 'VILLAIN') || (!isEvil && winner === 'VILLAGE');
       session.playerStats[p.id] = {
         ...existing,
@@ -157,7 +159,7 @@ export async function recordRoundResult({ players, winner, villainThemeId }) {
       if (!p.id) continue;
       const key = p.id;
       const existing = alltime.playerStats[key] ?? { name: p.name, wins: 0, losses: 0, roundsPlayed: 0, evilWins: 0, lastVillain: null };
-      const isEvil = p.role === 'VILLAIN';
+      const isEvil = p.role === 'VILLAIN' || p.role === 'DON';
       const won    = (isEvil && winner === 'VILLAIN') || (!isEvil && winner === 'VILLAGE');
       alltime.playerStats[key] = {
         ...existing,

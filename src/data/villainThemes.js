@@ -358,3 +358,43 @@ export function getTheme(id) {
   );
   return { ...theme, ...flavor, winSubText, afterlifeTerm: afterlife.term, afterlifeEmoji: afterlife.emoji, palette: PALETTES[theme.paletteKey], roles };
 }
+
+/**
+ * Build a pseudo-theme representing several villain factions active in the same game
+ * (mixed-villain mode — when multiple themes are selected, different VILLAIN players
+ * can each carry their own theme). If only one distinct theme is present, that theme's
+ * full flavor is returned unchanged. Non-villain flavor (SEER/HEALER/VILLAGER) comes
+ * from the first theme, since good roles aren't faction-specific.
+ */
+export function getCombinedTheme(themeIds) {
+  const unique = [...new Set(themeIds)];
+  const themes = unique.map(getTheme);
+  if (themes.length <= 1) return themes[0] || getTheme(null);
+  const primary = themes[0];
+  const label = themes.map(t => t.label).join(' & ');
+  return {
+    ...primary,
+    label,
+    tagline: `${themes.length} dark forces walk among you tonight.`,
+    nightWake: `${label}, wake up!`,
+    nightInstruction: `${label}, open your eyes.\n\nChoose your target for tonight! 🎯`,
+    killAction: 'struck down in the night',
+    killFlavor: 'More than one shadow moved tonight — no one can say which.',
+    quietFlavor: `${label} held back tonight... for now.`,
+    winText: `${label} Win!`,
+    loseText: `${label} have been defeated!`,
+    winSubText: `${themes.length} dark forces have claimed the village.`,
+  };
+}
+
+/**
+ * Resolve the theme (or combined theme, if mixed) that should drive flavor text for a
+ * group of villain players — e.g. alive villains during Night/Day, or all villains for
+ * the Game Over recap. Falls back to fallbackThemeId if none of the players carry an
+ * individual theme override (e.g. games started before this feature, or single-theme games).
+ */
+export function getActiveVillainTheme(villainPlayers, fallbackThemeId) {
+  const themeIds = (villainPlayers || []).map(p => p.villainThemeOverride).filter(Boolean);
+  if (themeIds.length === 0) return getTheme(fallbackThemeId);
+  return getCombinedTheme(themeIds);
+}

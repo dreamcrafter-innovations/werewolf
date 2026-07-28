@@ -18,6 +18,8 @@ import { getCaughtParticles, getKillParticles, VILLAGE_WIN_PARTICLES } from '../
 import { shareResultCard } from '../utils/shareResult';
 import OutcomeHero from '../components/OutcomeHero';
 import { evaluateBadges, BADGES } from '../data/badges';
+import { getActiveVillainTheme, getTheme } from '../data/villainThemes';
+import { haptics } from '../utils/haptics';
 
 let ViewShot = null;
 try { ViewShot = require('react-native-view-shot').default; } catch (_) {}
@@ -28,16 +30,21 @@ export default function GameOverScreen({ navigation }) {
   const C = usePalette();
   const { winner, players, round } = state;
 
+  // Mixed-villain mode: the recap should reflect every monster theme that was actually
+  // in this game, not just whichever theme happened to be last-selected on Home.
+  const allVillains = players.filter(p => p.role === 'VILLAIN');
+  const activeVillainTheme = getActiveVillainTheme(allVillains, state.villainThemeId);
+
   const meta = winner==='VILLAGE' ? {
     icon:'🎉', title:t('over_village_title'), sub:t('over_village_sub'),
-    villainSub: villainTheme.loseText,
+    villainSub: activeVillainTheme.loseText,
     body:t('over_village_body'), bg:['#001A08','#002A10'],
     accentColor:C.village||'#27AE60',
   } : {
-    icon:villainTheme.emoji, title:villainTheme.winText, sub:villainTheme.winSubText || 'The village has fallen.',
-    body:`The villagers never figured it out. Darkness swallowed the village. The ${villainTheme.label}s reign supreme! 🌑`,
-    bg:[villainTheme.bgColor,'#000'],
-    accentColor:villainTheme.color,
+    icon:activeVillainTheme.emoji, title:activeVillainTheme.winText, sub:activeVillainTheme.winSubText || 'The village has fallen.',
+    body:`The villagers never figured it out. Darkness swallowed the village. The ${activeVillainTheme.label}s reign supreme! 🌑`,
+    bg:[activeVillainTheme.bgColor,'#000'],
+    accentColor:activeVillainTheme.color,
   };
 
   const scaleAnim  = useRef(new Animated.Value(0)).current;
@@ -47,20 +54,21 @@ export default function GameOverScreen({ navigation }) {
   const [newBadges, setNewBadges] = useState([]);
 
   const isVillageWin  = winner === 'VILLAGE';
-  const killParticles = getKillParticles(state.villainThemeId);
-  const caughtParticles = getCaughtParticles(state.villainThemeId);
+  const killParticles = getKillParticles(activeVillainTheme.id);
+  const caughtParticles = getCaughtParticles(activeVillainTheme.id);
 
   const handleShare = async () => {
     setSharing(true);
     await shareResultCard(shareRef, {
       title: meta.title,
-      message: `${meta.title} — ${villainTheme.label} Night · ${players.length} players · ${round} rounds`,
+      message: `${meta.title} — ${activeVillainTheme.label} Night · ${players.length} players · ${round} rounds`,
     });
     setSharing(false);
   };
 
   useEffect(()=>{
     logScreenView('GameOverScreen');
+    (isVillageWin ? haptics.success : haptics.warning)();
     Animated.sequence([
       Animated.spring(scaleAnim,{toValue:1,friction:4,useNativeDriver:true}),
       Animated.timing(fadeAnim,{toValue:1,duration:500,useNativeDriver:true}),
@@ -81,14 +89,18 @@ export default function GameOverScreen({ navigation }) {
     })();
   },[]);
 
-  const getRoleDisplay = (roleId) => ({
-    name:  villainTheme.roles[roleId]?.name  ?? ROLES[roleId].name,
-    emoji: villainTheme.roles[roleId]?.emoji ?? ROLES[roleId].emoji,
-    color: roleId==='VILLAIN' ? villainTheme.color : ROLES[roleId].color,
-  });
+  const getRoleDisplay = (roleId, player) => {
+    const theme = (roleId === 'VILLAIN' && player?.villainThemeOverride) ? getTheme(player.villainThemeOverride) : villainTheme;
+    return {
+      name:  theme.roles[roleId]?.name  ?? ROLES[roleId].name,
+      emoji: theme.roles[roleId]?.emoji ?? ROLES[roleId].emoji,
+      color: roleId==='VILLAIN' ? theme.color : ROLES[roleId].color,
+    };
+  };
 
-  const evilPlayers    = players.filter(p=>p.role==='VILLAIN');
-  const specialPlayers = players.filter(p=>p.role!=='VILLAIN'&&p.role!=='VILLAGER');
+  // DON is evil-team (just Seer-proof) — belongs in the evil reveal, not "special roles".
+  const evilPlayers    = players.filter(p=>p.role==='VILLAIN'||p.role==='DON');
+  const specialPlayers = players.filter(p=>p.role!=='VILLAIN'&&p.role!=='DON'&&p.role!=='VILLAGER');
 
   return (
     <Gradient colors={meta.bg} style={styles.flex}>
@@ -105,7 +117,7 @@ export default function GameOverScreen({ navigation }) {
             {/* Big animated outcome illustration */}
             <OutcomeHero
               outcome={isVillageWin ? 'CAUGHT' : 'EVIL_WIN'}
-              villainEmoji={villainTheme.emoji}
+              villainEmoji={activeVillainTheme.emoji}
               accentColor={meta.accentColor}
             />
 
@@ -147,10 +159,10 @@ export default function GameOverScreen({ navigation }) {
 
               {/* Evil reveal */}
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle,{color:villainTheme.color}]}>{fill(t('over_evil_section'),{villain:villainTheme.label})}</Text>
+                <Text style={[styles.sectionTitle,{color:activeVillainTheme.color}]}>{fill(t('over_evil_section'),{villain:activeVillainTheme.label})}</Text>
                 <View style={styles.chipGrid}>
                   {evilPlayers.map(p=>{
-                    const rd=getRoleDisplay(p.role);
+                    const rd=getRoleDisplay(p.role, p);
                     return (
                       <View key={p.id} style={[styles.revealChip,{borderColor:rd.color,backgroundColor:rd.color+'22'}]}>
                         <Text style={[styles.revealAv,!p.isAlive&&{opacity:0.4}]}>{p.avatar}</Text>
@@ -171,7 +183,7 @@ export default function GameOverScreen({ navigation }) {
                   <Text style={[styles.sectionTitle,{color:C.primary}]}>{t('over_special')}</Text>
                   <View style={styles.chipGrid}>
                     {specialPlayers.map(p=>{
-                      const rd=getRoleDisplay(p.role);
+                      const rd=getRoleDisplay(p.role, p);
                       return (
                         <View key={p.id} style={[styles.revealChip,{borderColor:rd.color,backgroundColor:rd.color+'22'}]}>
                           <Text style={[styles.revealAv,!p.isAlive&&{opacity:0.4}]}>{p.avatar}</Text>
@@ -191,7 +203,7 @@ export default function GameOverScreen({ navigation }) {
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle,{color:C.text}]}>{t('over_all')}</Text>
                 {players.map(p=>{
-                  const rd=getRoleDisplay(p.role);
+                  const rd=getRoleDisplay(p.role, p);
                   return (
                     <View key={p.id} style={[styles.allRow,{backgroundColor:C.card,borderColor:C.cardBorder},!p.isAlive&&{opacity:0.6}]}>
                       <Text style={[styles.allAv,!p.isAlive&&{opacity:0.4}]}>{p.avatar}</Text>
@@ -226,9 +238,9 @@ export default function GameOverScreen({ navigation }) {
                   style={styles.offscreen}
                 >
                   <ResultShareCard
-                    villainEmoji={villainTheme.emoji}
-                    villainLabel={villainTheme.label}
-                    villainColor={villainTheme.color}
+                    villainEmoji={activeVillainTheme.emoji}
+                    villainLabel={activeVillainTheme.label}
+                    villainColor={activeVillainTheme.color}
                     outcome={isVillageWin ? 'VILLAGE_WIN' : 'EVIL_WIN'}
                     outcomeTitle={meta.title}
                     outcomeEmoji={meta.icon}
@@ -241,9 +253,9 @@ export default function GameOverScreen({ navigation }) {
                 // Web / ViewShot unavailable — store ref on a plain View (share will use text fallback)
                 <View ref={shareRef} style={styles.offscreen}>
                   <ResultShareCard
-                    villainEmoji={villainTheme.emoji}
-                    villainLabel={villainTheme.label}
-                    villainColor={villainTheme.color}
+                    villainEmoji={activeVillainTheme.emoji}
+                    villainLabel={activeVillainTheme.label}
+                    villainColor={activeVillainTheme.color}
                     outcome={isVillageWin ? 'VILLAGE_WIN' : 'EVIL_WIN'}
                     outcomeTitle={meta.title}
                     outcomeEmoji={meta.icon}

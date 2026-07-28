@@ -39,10 +39,11 @@ const STEPS = [
     title: 'The Roles',
     roles: [
       { emoji: '👿', name: 'Evil One',  desc: 'Eliminates a villager each night. Blends in by day.' },
+      { emoji: '😈', name: 'The Don',   desc: 'A hidden evil ally who appears innocent to the Seer\'s check. Shows up in bigger games (8+ players).' },
       { emoji: '🔮', name: 'Seer',      desc: 'Each night secretly checks one player\'s true alignment.' },
       { emoji: '🌿', name: 'Healer',    desc: 'Protects one player each night. Can protect themselves once.' },
       { emoji: '🏹', name: 'Hunter',    desc: 'When eliminated by vote, takes one other player with them!' },
-      { emoji: '👑', name: 'Chief',     desc: 'Counts as two votes. Can break voting ties.' },
+      { emoji: '👑', name: 'Chief',     desc: 'Counts as two votes. Can help break voting ties.' },
       { emoji: '🧑‍🌾', name: 'Villager', desc: 'No special power — use your wit to find the evil!' },
     ],
   },

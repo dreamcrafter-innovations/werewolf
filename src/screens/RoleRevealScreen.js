@@ -10,6 +10,7 @@ import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
 import { ROLES } from '../data/roles';
 import { getTheme } from '../data/villainThemes';
+import { haptics } from '../utils/haptics';
 
 export default function RoleRevealScreen({ navigation }) {
   const { state, startNight, villainTheme } = useGame();
@@ -42,11 +43,13 @@ export default function RoleRevealScreen({ navigation }) {
     bgColor: currentPlayer.role==='VILLAIN' ? displayTheme.bgColor : baseRole.bgColor,
   } : null;
 
-  const EVIL_ROLES = ['VILLAIN'];
+  // DON is evil-team too (just Seer-proof) — still shown as an ally to other evils.
+  const EVIL_ROLES = ['VILLAIN', 'DON'];
   const evilAllies = (EVIL_ROLES.includes(baseRole?.id) && knowsAllies)
     ? players.filter(p=>EVIL_ROLES.includes(p.role)&&p.id!==currentPlayer.id) : [];
 
   const revealCard = () => {
+    haptics.medium();
     Animated.sequence([
       Animated.timing(scaleAnim,{toValue:0.93,duration:100,useNativeDriver:true}),
       Animated.timing(scaleAnim,{toValue:1.02,duration:150,useNativeDriver:true}),
@@ -69,7 +72,9 @@ export default function RoleRevealScreen({ navigation }) {
             <Text style={styles.bigMoon}>{villainTheme.homeMoon}</Text>
             <Text style={[styles.doneTitle,{color:C.text}]}>{t('reveal_all_done_title')}</Text>
             <Text style={[styles.doneSub,{color:C.textSecondary}]}>{t('reveal_all_done_sub')}</Text>
-            <Pressable style={[styles.nightBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>{startNight();navigation.navigate('Night');}}>
+            {/* replace, not navigate — Night is revisited every round and must remount
+                fresh each time (see Night/Day/Vote for the full explanation) */}
+            <Pressable style={[styles.nightBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>{startNight();navigation.replace('Night');}}>
               <Text style={styles.nightBtnTxt}>{t('reveal_start_night')}</Text>
             </Pressable>
           </View>
@@ -85,7 +90,10 @@ export default function RoleRevealScreen({ navigation }) {
           <View style={styles.header}>
             <Text style={[styles.progress,{color:C.textSecondary}]}>{idx+1} / {players.length}</Text>
             <View style={[styles.bar,{backgroundColor:C.cardBorder}]}>
-              <View style={[styles.barFill,{width:`${(idx/players.length)*100}%`,backgroundColor:C.primary}]}/>
+              {/* (idx+1) so this actually reaches 100% on the last card, matching the
+                  "{idx+1} / {players.length}" label above it — it was previously always
+                  one player short (e.g. 3/4 while viewing the 4th and final player). */}
+              <View style={[styles.barFill,{width:`${((idx+1)/players.length)*100}%`,backgroundColor:C.primary}]}/>
             </View>
           </View>
           <View style={styles.centered}>
@@ -109,12 +117,17 @@ export default function RoleRevealScreen({ navigation }) {
                   <View style={[styles.divider,{backgroundColor:C.cardBorder}]}/>
                   <Text style={[styles.roleDesc,{color:C.text}]}>{roleData.description}</Text>
                   {evilAllies.length>0&&(
-                    <View style={[styles.alliesBox,{borderColor:villainTheme.color}]}>
-                      <Text style={[styles.alliesTitle,{color:villainTheme.color}]}>{fill(t('reveal_allies_title'),{villain:villainTheme.label})}</Text>
+                    // displayTheme (not villainTheme) — a Villain in mixed-villain mode
+                    // must see allies framed in their OWN theme, not whichever theme is
+                    // currently previewed globally.
+                    <View style={[styles.alliesBox,{borderColor:displayTheme.color}]}>
+                      <Text style={[styles.alliesTitle,{color:displayTheme.color}]}>{fill(t('reveal_allies_title'),{villain:displayTheme.label})}</Text>
                       {evilAllies.map(p=><Text key={p.id} style={[styles.allyName,{color:C.text}]}>{p.avatar} {p.name}</Text>)}
                     </View>
                   )}
-                  {baseRole?.id==='VILLAIN'&&!knowsAllies&&(
+                  {/* was VILLAIN-only, so a Don with knowsAllies off saw neither this nor
+                      the allies box above — a blank gap where a message should be */}
+                  {EVIL_ROLES.includes(baseRole?.id)&&!knowsAllies&&(
                     <View style={[styles.alliesBox,{borderColor:C.cardBorder}]}>
                       <Text style={[styles.alliesTitle,{color:C.textSecondary}]}>{t('reveal_solo')}</Text>
                     </View>

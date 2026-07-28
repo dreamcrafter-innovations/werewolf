@@ -19,7 +19,7 @@ export default function ResultShareCard({
   const isVillageWin = outcome === 'VILLAGE_WIN';
   const accentColor  = isVillageWin ? '#27AE60' : villainColor;
   const bg           = gradientColors?.[1] ?? '#0B0B1E';
-  const evilPlayers  = players.filter(p => p.role === 'VILLAIN');
+  const evilPlayers  = players.filter(p => p.role === 'VILLAIN' || p.role === 'DON');
   const deadCount    = players.filter(p => !p.isAlive).length;
 
   return (

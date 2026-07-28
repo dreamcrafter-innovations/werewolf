@@ -11,6 +11,8 @@ import { FONTS } from '../components/theme';
 import { getRandomProphecy } from '../data/roles';
 import { getNightSteps } from '../utils/gameLogic';
 import { useSpeech } from '../hooks/useSpeech';
+import { getActiveVillainTheme, getTheme } from '../data/villainThemes';
+import { haptics } from '../utils/haptics';
 
 export default function NightScreen({ navigation }) {
   const { state, villainTheme, setVillainTarget, setHealerProtect, setSeerCheck, resolveNight } = useGame();
@@ -18,10 +20,15 @@ export default function NightScreen({ navigation }) {
   const C = usePalette();
   const { players, round } = state;
   const alive = players.filter(p=>p.isAlive);
+  const aliveVillains = alive.filter(p=>p.role==='VILLAIN');
+  // Mixed-villain mode: alive villains may carry different theme overrides —
+  // combine them for the shared "wake up" narration each night.
+  const activeVillainTheme = getActiveVillainTheme(aliveVillains, state.villainThemeId);
   const steps = getNightSteps(alive);
   const [stepIdx, setStepIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [seerResult, setSeerResult] = useState(null);
+  const [seerResultTheme, setSeerResultTheme] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const prophecy = useRef(getRandomProphecy()).current;
   const step = steps[stepIdx];
@@ -35,7 +42,7 @@ export default function NightScreen({ navigation }) {
     const te = villainTheme.roles?.SEER?.emoji || '🔮';
     switch(s) {
       case 'INTRO':   return { icon:'🌑', title:t('night_intro_title'),   script:t('night_intro_script'),   action:null,                    bg:[C.bg,'#02020E'] };
-      case 'VILLAIN':  return { icon:villainTheme.emoji, title:villainTheme.nightWake, script:villainTheme.nightInstruction, action:t('night_choose_target'), bg:[villainTheme.bgColor||C.bg,'#050000'] };
+      case 'VILLAIN':  return { icon:activeVillainTheme.emoji, title:activeVillainTheme.nightWake, script:activeVillainTheme.nightInstruction, action:t('night_choose_target'), bg:[activeVillainTheme.bgColor||C.bg,'#050000'] };
       case 'HEALER':  return { icon:ve, title:`${vn}, wake up!`, script:`${vn}, open your eyes.\nWhich player do you want to protect tonight?\n\n(You can protect yourself too — but only once!) 💊`, action:t('night_protect'), bg:[C.bg,'#000810'] };
       case 'SEER': return { icon:te, title:`${tn}, wake up!`, script:`${tn}, open your eyes.\nWhich player's identity do you want to check?\n\nThe result will ONLY be shown to you — tell no one! 🤫`, action:t('night_check'), bg:[C.bg,'#0D001A'] };
       case 'DAWN':    return { icon:'🌅', title:t('night_dawn_title'),    script:t('night_dawn_script'),    action:null,                    bg:['#1A0D00','#100A00'] };
@@ -55,7 +62,10 @@ export default function NightScreen({ navigation }) {
   useEffect(() => () => { stop(); }, []);
 
   const advance = () => {
-    if(stepIdx===steps.length-1){ resolveNight(); navigation.navigate('Day'); }
+    // replace (not navigate) — Night/Day/Vote cycle through the same route names every
+    // round; navigate() would pop back to the already-mounted screen from a previous
+    // round instead of remounting, leaving stale step/phase state behind.
+    if(stepIdx===steps.length-1){ resolveNight(); navigation.replace('Day'); }
     else {
       const nextIdx = stepIdx + 1;
       speak(getMetaForStep(steps[nextIdx]).script); // synchronous in user-event — works on web
@@ -65,13 +75,18 @@ export default function NightScreen({ navigation }) {
 
   const handleNext = () => {
     if(meta.action && !selected) return; // selection required; use Skip to bypass
+    if(meta.action) haptics.light(); // confirming a night-action target selection
     if(step==='VILLAIN'&&selected) setVillainTarget(selected);
     else if(step==='HEALER'&&selected) setHealerProtect(selected);
     else if(step==='SEER'&&selected) {
       setSeerCheck(selected);
       const target = players.find(p=>p.id===selected);
-      setSeerResult(target?.role==='VILLAIN'?'EVIL':'INNOCENT');
-      setTimeout(()=>{ setSeerResult(null); advance(); }, 3000);
+      const isEvil = target?.role==='VILLAIN';
+      setSeerResult(isEvil?'EVIL':'INNOCENT');
+      // Show the target's own villain theme (mixed-villain mode), not the aggregate one
+      setSeerResultTheme(isEvil ? getTheme(target.villainThemeOverride || state.villainThemeId) : null);
+      (isEvil ? haptics.warning : haptics.success)();
+      setTimeout(()=>{ setSeerResult(null); setSeerResultTheme(null); advance(); }, 3000);
       return;
     }
     advance();
@@ -127,9 +142,9 @@ export default function NightScreen({ navigation }) {
 
               {seerResult&&(
                 <View style={[styles.seerResult,seerResult==='EVIL'?{backgroundColor:C.evil+'50',borderColor:C.evil}:{backgroundColor:(C.village||'#27AE60')+'40',borderColor:C.village||'#27AE60'}]}>
-                  <Text style={styles.seerEmoji}>{seerResult==='EVIL'?villainTheme.emoji:'😇'}</Text>
+                  <Text style={styles.seerEmoji}>{seerResult==='EVIL'?(seerResultTheme?.emoji ?? villainTheme.emoji):'😇'}</Text>
                   <Text style={[styles.seerText,{color:C.text}]}>
-                    {seerResult==='EVIL' ? fill(t('night_evil_result'),{villain:villainTheme.label.toUpperCase()}) : t('night_innocent_result')}
+                    {seerResult==='EVIL' ? fill(t('night_evil_result'),{villain:(seerResultTheme?.label ?? villainTheme.label).toUpperCase()}) : t('night_innocent_result')}
                   </Text>
                 </View>
               )}

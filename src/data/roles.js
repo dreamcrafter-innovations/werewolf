@@ -126,9 +126,21 @@ export function getRoleAssignment(playerCount, villainCountOverride = 0) {
   roles.push('SEER');
   // Include Healer (Doctor) at 5+ players
   if (playerCount >= 5) roles.push('HEALER');
+  // Include Hunter (last-arrow revenge) at 7+ players
+  if (playerCount >= 7) roles.push('HUNTER');
+  // Include Chief (double vote) at 9+ players
+  if (playerCount >= 9) roles.push('CHIEF');
   // Fill remaining with Villagers (Citizens)
   while (roles.length < playerCount) roles.push('VILLAGER');
-  return shuffle(roles);
+  const assignment = shuffle(roles);
+  // At 8+ players with 2+ evil, upgrade one VILLAIN to the Don — appears innocent to the
+  // Seer. Only kicks in with 2+ evil so at least one plain Villain remains detectable
+  // and the night "villain wake" step never loses its only actor.
+  if (playerCount >= 8 && evilCount >= 2) {
+    const villainIdx = assignment.findIndex(r => r === 'VILLAIN');
+    if (villainIdx !== -1) assignment[villainIdx] = 'DON';
+  }
+  return assignment;
 }
 
 function shuffle(arr) {
@@ -140,9 +152,9 @@ function shuffle(arr) {
   return a;
 }
 
-export function getRolePreview(playerCount) {
+export function getRolePreview(playerCount, villainCountOverride = 0) {
   if (playerCount < 4) return [];
-  const assigned = getRoleAssignment(playerCount);
+  const assigned = getRoleAssignment(playerCount, villainCountOverride);
   const counts = {};
   assigned.forEach((r) => { counts[r] = (counts[r] || 0) + 1; });
   return Object.entries(counts).map(([id, count]) => ({ id, count, ...ROLES[id] }));

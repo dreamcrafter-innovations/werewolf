@@ -13,6 +13,7 @@ import ParticleField from '../components/ParticleField';
 import BurstEffect from '../components/BurstEffect';
 import KillRevealArt from '../components/KillRevealArt';
 import { getKillParticles, SAVE_BURST_PARTICLES, QUIET_NIGHT_PARTICLES } from '../data/themeParticles';
+import { getActiveVillainTheme, getTheme } from '../data/villainThemes';
 
 export default function DayScreen({ navigation }) {
   const { state, villainTheme } = useGame();
@@ -25,6 +26,10 @@ export default function DayScreen({ navigation }) {
   const savedPlayer  = players.find(p=>p.id===savedById);
   const alive = players.filter(p=>p.isAlive);
   const dead  = players.filter(p=>!p.isAlive);
+  // Mixed-villain mode: last night's flavor text reflects whichever villain theme(s)
+  // are still active, not just the single last-selected theme.
+  const aliveVillains = alive.filter(p=>p.role==='VILLAIN');
+  const activeVillainTheme = getActiveVillainTheme(aliveVillains, state.villainThemeId);
   const ghostGossip = dead.length > 0
     ? dead.slice(0, 2).map((p, i) => {
         const lines = [
@@ -36,7 +41,7 @@ export default function DayScreen({ navigation }) {
       })
     : [];
 
-  const killParticles  = getKillParticles(state.villainThemeId);
+  const killParticles  = getKillParticles(activeVillainTheme.id);
   const nightParticles = killedId   ? killParticles
                        : savedById  ? SAVE_BURST_PARTICLES
                        : QUIET_NIGHT_PARTICLES;
@@ -51,11 +56,16 @@ export default function DayScreen({ navigation }) {
     ]).start();
   },[]);
 
-  const getRoleDisplay = (roleId) => ({
-    name:  villainTheme.roles[roleId]?.name  ?? ROLES[roleId].name,
-    emoji: villainTheme.roles[roleId]?.emoji ?? ROLES[roleId].emoji,
-    color: roleId==='VILLAIN' ? villainTheme.color : ROLES[roleId].color,
-  });
+  // Dead players show their own theme's role flavor (a villain keeps their theme even
+  // after being voted out); everyone else falls back to the single active theme.
+  const getRoleDisplay = (roleId, player) => {
+    const theme = (roleId === 'VILLAIN' && player?.villainThemeOverride) ? getTheme(player.villainThemeOverride) : villainTheme;
+    return {
+      name:  theme.roles[roleId]?.name  ?? ROLES[roleId].name,
+      emoji: theme.roles[roleId]?.emoji ?? ROLES[roleId].emoji,
+      color: roleId==='VILLAIN' ? theme.color : ROLES[roleId].color,
+    };
+  };
 
   return (
     <Gradient colors={['#0A0500','#180E00','#1E1200']} style={styles.flex}>
@@ -91,21 +101,21 @@ export default function DayScreen({ navigation }) {
             ]}>
               {killedPlayer ? (
                 <>
-                  <KillRevealArt type="KILL" playerAvatar={killedPlayer.avatar} villainEmoji={villainTheme.emoji} accentColor={villainTheme.color} />
+                  <KillRevealArt type="KILL" playerAvatar={killedPlayer.avatar} villainEmoji={activeVillainTheme.emoji} accentColor={activeVillainTheme.color} />
                   <Text style={styles.resultIcon}>💀</Text>
                   <Text style={[styles.resultTitle,{color:C.text}]}>{t('day_attack_title')}</Text>
                   <View style={styles.victimRow}>
                     <Text style={styles.victimAvatar}>{killedPlayer.avatar}</Text>
                     <View>
                       <Text style={[styles.victimName,{color:C.text}]}>{killedPlayer.name}</Text>
-                      <Text style={[styles.victimSub,{color:C.textSecondary}]}>{villainTheme.killAction ?? fill(t('day_attack_sub'),{villain:villainTheme.label,emoji:villainTheme.emoji})}</Text>
+                      <Text style={[styles.victimSub,{color:C.textSecondary}]}>{activeVillainTheme.killAction ?? fill(t('day_attack_sub'),{villain:activeVillainTheme.label,emoji:activeVillainTheme.emoji})}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.flavor,{color:C.textDim}]}>{villainTheme.killFlavor ?? t('day_attack_flavor')}</Text>
+                  <Text style={[styles.flavor,{color:C.textDim}]}>{activeVillainTheme.killFlavor ?? t('day_attack_flavor')}</Text>
                 </>
               ) : savedById ? (
                 <>
-                  <KillRevealArt type="SAVE" playerAvatar={savedPlayer?.avatar ?? '🌿'} villainEmoji={villainTheme.emoji} accentColor={villainTheme.color} />
+                  <KillRevealArt type="SAVE" playerAvatar={savedPlayer?.avatar ?? '🌿'} villainEmoji={activeVillainTheme.emoji} accentColor={activeVillainTheme.color} />
                   <Text style={styles.resultIcon}>🌿</Text>
                   <Text style={[styles.resultTitle,{color:C.text}]}>{t('day_healer_title')}</Text>
                   <View style={styles.victimRow}>
@@ -119,10 +129,10 @@ export default function DayScreen({ navigation }) {
                 </>
               ) : (
                 <>
-                  <KillRevealArt type="QUIET" playerAvatar="😶‍🌫️" villainEmoji={villainTheme.emoji} accentColor={villainTheme.color} />
+                  <KillRevealArt type="QUIET" playerAvatar="😶‍🌫️" villainEmoji={activeVillainTheme.emoji} accentColor={activeVillainTheme.color} />
                   <Text style={styles.resultIcon}>😶‍🌫️</Text>
                   <Text style={[styles.resultTitle,{color:C.text}]}>{t('day_quiet_title')}</Text>
-                  <Text style={[styles.flavor,{color:C.textDim}]}>{villainTheme.quietFlavor ?? fill(t('day_quiet_flavor'),{villain:villainTheme.label})}</Text>
+                  <Text style={[styles.flavor,{color:C.textDim}]}>{activeVillainTheme.quietFlavor ?? fill(t('day_quiet_flavor'),{villain:activeVillainTheme.label})}</Text>
                 </>
               )}
             </Animated.View>
@@ -146,7 +156,7 @@ export default function DayScreen({ navigation }) {
                 <Text style={[styles.sectionTitle,{color:C.text}]}>{fill(t('day_dead'),{count:dead.length})}</Text>
                 <View style={styles.deadList}>
                   {dead.map(p=>{
-                    const rd = getRoleDisplay(p.role);
+                    const rd = getRoleDisplay(p.role, p);
                     return (
                       <View key={p.id} style={[styles.deadRow,{backgroundColor:C.surface,borderColor:C.cardBorder}]}>
                         <Text style={[styles.deadAv,{opacity:0.5}]}>{p.avatar}</Text>
@@ -165,7 +175,7 @@ export default function DayScreen({ navigation }) {
             {/* Discuss */}
             <View style={[styles.discussBox,{backgroundColor:C.primary+'10',borderColor:C.primary+'30'}]}>
               <Text style={[styles.discussTitle,{color:C.primary}]}>{t('day_discuss_title')}</Text>
-              <Text style={[styles.discussText,{color:C.textSecondary}]}>{fill(t('day_discuss_text'),{villain:villainTheme.label})}</Text>
+              <Text style={[styles.discussText,{color:C.textSecondary}]}>{fill(t('day_discuss_text'),{villain:activeVillainTheme.label})}</Text>
             </View>
 
             {ghostGossip.length > 0 && (
@@ -177,7 +187,9 @@ export default function DayScreen({ navigation }) {
               </View>
             )}
 
-            <Pressable style={[styles.voteBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>navigation.navigate('Vote')}>
+            {/* replace, not navigate — Vote is revisited every round and must remount
+                fresh each time, otherwise it reopens on last round's stale result screen */}
+            <Pressable style={[styles.voteBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>navigation.replace('Vote')}>
               <Text style={styles.voteBtnTxt}>{t('day_vote_btn')}</Text>
             </Pressable>
           </ScrollView>

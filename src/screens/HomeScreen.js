@@ -1,6 +1,7 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet, ScrollView, FlatList, Switch, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
@@ -30,9 +31,6 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     logScreenView('HomeScreen');
-    loadSettings().then(s => {
-      if (s?.narratorEnabled !== undefined) setNarratorEnabled(s.narratorEnabled);
-    });
     Animated.sequence([
       Animated.timing(titleFade, { toValue: 1, duration: 900, useNativeDriver: true }),
       Animated.spring(btnScale, { toValue: 1, friction: 5, useNativeDriver: true }),
@@ -42,6 +40,18 @@ export default function HomeScreen({ navigation }) {
       Animated.timing(moonPulse, { toValue: 1.0, duration: 2200, useNativeDriver: true }),
     ])).start();
   }, []);
+
+  // Re-read narratorEnabled every time this tab regains focus — Home and Settings are
+  // both persistent tab screens that never unmount, and both have their own Narrator
+  // toggle writing to the same storage key. Without this, toggling it on one screen
+  // leaves the other showing a stale value until the app fully restarts.
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings().then(s => {
+        if (s?.narratorEnabled !== undefined) setNarratorEnabled(s.narratorEnabled);
+      });
+    }, [])
+  );
 
   async function toggleNarrator() {
     const next = !narratorEnabled;
@@ -152,7 +162,7 @@ export default function HomeScreen({ navigation }) {
                   const sel = state.selectedThemeIds.includes(item.id);
                   return (
                     <Pressable style={[styles.themeCard,{backgroundColor:sel?item.color+'25':C.card,borderColor:sel?item.color:C.cardBorder}]}
-                      onPress={()=>{setVillainTheme(item.id);logThemeSelected(item.id);}}>
+                      onPress={()=>{toggleThemeSelect(item.id);logThemeSelected(item.id);}}>
                       <Text style={styles.themeEmoji}>{item.emoji}</Text>
                       <Text style={[styles.themeLabel,{color:sel?item.color:C.text}]}>{item.label}</Text>
                       <Text style={[styles.themeSub,{color:C.textDim}]}>{item.sublabel}</Text>
@@ -168,6 +178,19 @@ export default function HomeScreen({ navigation }) {
                 <Text style={[styles.themeEdgeArrow, { color: C.primary }]}>›</Text>
               </Animated.View>
             </View>
+
+            {/* Select all visible themes at once — mixes villains from every selected
+                theme into the same game (each VILLAIN player draws their own flavor). */}
+            <Pressable
+              style={styles.selectAllRow}
+              onPress={()=>selectAllThemes(visibleThemes.map(th=>th.id))}
+            >
+              <Text style={[styles.selectAllText,{color:C.primary}]}>
+                {state.selectedThemeIds.length >= visibleThemes.length
+                  ? `✓ All ${visibleThemes.length} themes selected — mixed villains!`
+                  : `✨ Select all ${visibleThemes.length} themes to mix villains`}
+              </Text>
+            </Pressable>
 
             {/* Scroll hint pill — only visible before first scroll */}
             {!themeScrollInfo.canLeft && themeScrollInfo.canRight && (
@@ -313,6 +336,8 @@ const styles = StyleSheet.create({
   themeEdgeArrow:{fontSize:22,fontWeight:'700',textShadowOffset:{width:0,height:0},textShadowRadius:6,opacity:0.9},
   scrollHintPill:{alignSelf:'center',marginTop:6,borderRadius:20,borderWidth:1,paddingHorizontal:12,paddingVertical:3},
   scrollHintText:{fontSize:11,letterSpacing:1},
+  selectAllRow:{alignSelf:'center',marginTop:8},
+  selectAllText:{fontSize:12,fontWeight:'700',textAlign:'center'},
   langCard:{alignItems:'center',borderRadius:14,borderWidth:2,paddingHorizontal:12,paddingVertical:10,minWidth:72,position:'relative'},
   langEmoji:{fontSize:22},
   langLabel:{...FONTS.small,marginTop:4,fontWeight:'600',textAlign:'center'},

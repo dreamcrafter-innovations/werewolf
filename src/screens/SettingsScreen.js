@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, Platform, Linking,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import Gradient         from '../components/Gradient';
 import TabletContainer  from '../components/TabletContainer';
@@ -14,6 +15,7 @@ import { usePalette } from '../hooks/usePalette';
 import { loadSettings, saveSettings } from '../storage';
 import { logScreenView, logSettingsChanged } from '../utils/analytics';
 import { openSupportLink } from '../utils/supportLink';
+import { setHapticsEnabledCache } from '../utils/haptics';
 
 const PRIVACY_URL = 'https://www.dreamcrafterinnovations.com/privacy-policy';
 
@@ -22,30 +24,29 @@ export default function SettingsScreen({ navigation }) {
   const { width }  = useWindowDimensions();
   const isTablet   = width >= 768;
 
-  const [soundEnabled,   setSoundEnabled]   = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [narratorEnabled, setNarratorEnabled] = useState(false);
 
   useEffect(() => {
     logScreenView('SettingsScreen');
-    loadSettings().then(s => {
-      if (s?.soundEnabled   !== undefined) setSoundEnabled(s.soundEnabled);
-      if (s?.hapticsEnabled !== undefined) setHapticsEnabled(s.hapticsEnabled);
-      if (s?.narratorEnabled !== undefined) setNarratorEnabled(s.narratorEnabled);
-    });
   }, []);
 
-  async function toggleSound() {
-    const next = !soundEnabled;
-    setSoundEnabled(next);
-    const s = (await loadSettings()) ?? {};
-    await saveSettings({ ...s, soundEnabled: next });
-    logSettingsChanged('sound', !next, next);
-  }
+  // Re-read settings every time this tab regains focus — narratorEnabled in particular
+  // has its own toggle on the Home tab too, and since tab screens never unmount, a
+  // change made there would otherwise never show up here until the app restarts.
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings().then(s => {
+        if (s?.hapticsEnabled !== undefined) setHapticsEnabled(s.hapticsEnabled);
+        if (s?.narratorEnabled !== undefined) setNarratorEnabled(s.narratorEnabled);
+      });
+    }, [])
+  );
 
   async function toggleHaptics() {
     const next = !hapticsEnabled;
     setHapticsEnabled(next);
+    setHapticsEnabledCache(next); // instant effect app-wide, no storage round-trip needed
     const s = (await loadSettings()) ?? {};
     await saveSettings({ ...s, hapticsEnabled: next });
     logSettingsChanged('haptics', !next, next);
@@ -98,16 +99,11 @@ export default function SettingsScreen({ navigation }) {
             </View>
 
             {/* ── AUDIO ─────────────────────────────────────────── */}
+            {/* No "Sound Effects" toggle here — there are no sound assets or audio
+                library in this project yet, so a switch for it would do nothing.
+                Add it back once real sound effects are wired up. */}
             <SectionLabel style={{ color: C.primary }}>Audio &amp; Feel</SectionLabel>
             <View style={[styles.card, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
-              <View style={rowStyle}>
-                <View style={styles.rowTextWrap}>
-                  <Text style={rowLabelStyle}>Sound Effects</Text>
-                  <Text style={[styles.rowSub, rowSubStyle]}>Whoosh, reveal, game cues</Text>
-                </View>
-                <Toggle value={soundEnabled} onToggle={toggleSound} activeColor={C.primary} />
-              </View>
-              <View style={divStyle} />
               <View style={rowStyle}>
                 <View style={styles.rowTextWrap}>
                   <Text style={rowLabelStyle}>Haptic Feedback</Text>

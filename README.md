@@ -1,4 +1,4 @@
-# 🌕 Bhoot Gaon — भूत गाँव
+# 🌕 Werewolf
 ### A Haunted Indian Village Werewolf Game
 
 > *"Gaon mein kuch toh hai..."*

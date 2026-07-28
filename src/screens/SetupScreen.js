@@ -22,7 +22,7 @@ const FALLBACK_AVATARS = ['👦','👧','🧒','👩','👨','🧑','👴','👵
   '🧔','👲','👳','🧕','🕵️','👮','🧙','🧝'];
 
 export default function SetupScreen({ navigation }) {
-  const { startGame, villainTheme } = useGame();
+  const { state, startGame, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
 
@@ -151,7 +151,7 @@ export default function SetupScreen({ navigation }) {
 
   // ── render: setup ────────────────────────────────────────────────────
   if (view === 'setup') {
-    const rolePreview = getRolePreview(players.length);
+    const rolePreview = getRolePreview(players.length, state.villainCount);
     return (
       <Gradient colors={villainTheme.gradientBg} style={s.flex}>
         <SafeAreaView style={s.flex}>

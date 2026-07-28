@@ -9,7 +9,9 @@ import Gradient from '../components/Gradient';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
 import { ROLES } from '../data/roles';
+import { getTheme } from '../data/villainThemes';
 import { getVoteTally, getVoteWeight } from '../utils/gameLogic';
+import { haptics } from '../utils/haptics';
 
 export default function VoteScreen({ navigation }) {
   const { state, villainTheme, castVote, resolveVote, hunterRevengeTarget, skipHunterRevenge, startNight } = useGame();
@@ -30,21 +32,35 @@ export default function VoteScreen({ navigation }) {
   const totalVoteWeight = voters.reduce((sum, p) => sum + getVoteWeight(p), 0) || 1;
   const isGhostVoter = !!voter && !voter.isAlive;
 
-  const getRoleDisplay = (roleId) => ({
-    name:  villainTheme.roles[roleId]?.name  ?? ROLES[roleId].name,
-    emoji: villainTheme.roles[roleId]?.emoji ?? ROLES[roleId].emoji,
-    color: roleId==='VILLAIN' ? villainTheme.color : ROLES[roleId].color,
-  });
+  const getRoleDisplay = (roleId, player) => {
+    const theme = (roleId === 'VILLAIN' && player?.villainThemeOverride) ? getTheme(player.villainThemeOverride) : villainTheme;
+    return {
+      name:  theme.roles[roleId]?.name  ?? ROLES[roleId].name,
+      emoji: theme.roles[roleId]?.emoji ?? ROLES[roleId].emoji,
+      color: roleId==='VILLAIN' ? theme.color : ROLES[roleId].color,
+    };
+  };
 
-  // Navigate after revenge resolves
+  // Haptic pulse when the vote result actually appears — warning if someone was
+  // eliminated, a lighter tap for a tie. Keyed on subPhase so it fires exactly once
+  // per genuine transition into RESULT, not on every render.
+  useEffect(() => {
+    if (subPhase === 'RESULT') (eliminated ? haptics.warning : haptics.light)();
+  }, [subPhase]);
+
+  // Navigate after revenge resolves.
+  // replace (not navigate) — Night/Day/Vote cycle through the same route names every
+  // round; navigate() would pop back to the already-mounted screen from a previous
+  // round instead of remounting, leaving stale step/phase state behind.
   useEffect(()=>{
     if(!showRevenge) return;
-    if(phase==='GAME_OVER') navigation.navigate('GameOver');
-    else if(phase==='DAY'){ startNight(); navigation.navigate('Night'); }
+    if(phase==='GAME_OVER') navigation.replace('GameOver');
+    else if(phase==='DAY'){ startNight(); navigation.replace('Night'); }
   },[phase, showRevenge]);
 
   const doVote = (abstain=false) => {
     if(!abstain&&!selected) return;
+    haptics.light();
     castVote(voter.id, abstain?null:selected);
     const isLast = voterIdx===voters.length-1;
     if(isLast){ resolveVote(); setSubPhase('RESULT'); }
@@ -53,9 +69,9 @@ export default function VoteScreen({ navigation }) {
 
   const afterResult = () => {
     if (phase === 'HUNTER_REVENGE') { setShowRevenge(true); return; }
-    if (phase === 'GAME_OVER') { navigation.navigate('GameOver'); return; }
+    if (phase === 'GAME_OVER') { navigation.replace('GameOver'); return; }
     startNight();
-    navigation.navigate('Night');
+    navigation.replace('Night');
   };
 
   // ── Hunter revenge ───────────────────────────────────────────────────────
@@ -83,7 +99,7 @@ export default function VoteScreen({ navigation }) {
                 ))}
               </View>
               <Pressable style={[styles.actionBtn,{backgroundColor:selected?C.primary:C.textDim,shadowColor:C.primary}]}
-                onPress={()=>selected&&hunterRevengeTarget(selected)}>
+                onPress={()=>{ if(selected){ haptics.warning(); hunterRevengeTarget(selected); } }}>
                 <Text style={styles.actionBtnTxt}>{t('vote_hunter_fire')}</Text>
               </Pressable>
               <Pressable style={styles.skipBtn} onPress={skipHunterRevenge}>
@@ -134,7 +150,7 @@ export default function VoteScreen({ navigation }) {
                   <Text style={[styles.elimLabel,{color:C.textSecondary}]}>{t('vote_eliminated')}</Text>
                   <Text style={styles.elimAv}>{eliminated.avatar}</Text>
                   <Text style={[styles.elimName,{color:C.text}]}>{eliminated.name}</Text>
-                  {(()=>{const rd=getRoleDisplay(eliminated.role); return (
+                  {(()=>{const rd=getRoleDisplay(eliminated.role, eliminated); return (
                     <View style={[styles.roleBadge,{backgroundColor:rd.color+'33'}]}>
                       <Text>{rd.emoji}</Text>
                       <Text style={[styles.roleBadgeNm,{color:rd.color}]}>{fill(t('vote_was_a'),{role:rd.name})}</Text>

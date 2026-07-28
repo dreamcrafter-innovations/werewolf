@@ -6,7 +6,9 @@ import { ROLES } from '../data/roles';
  * Check if the game is over and who won.
  * Returns 'VILLAIN', 'VILLAGE', or null (game continues).
  */
-const EVIL_ROLES = new Set(['VILLAIN']);
+// DON is on the evil team (and counts for win-condition parity) even though the Seer
+// specifically cannot detect it — that check stays VILLAIN-only in GameContext/NightScreen.
+const EVIL_ROLES = new Set(['VILLAIN', 'DON']);
 
 export function checkWinCondition(players) {
   const alive = players.filter((p) => p.isAlive);
@@ -95,10 +97,11 @@ export function getVoteTally(votes, players) {
 }
 
 /**
- * Get alive villain players.
+ * Get alive villain (evil-team) players — includes the Don, who is evil but
+ * undetectable by the Seer.
  */
 export function getAliveVillains(players) {
-  return players.filter((p) => p.isAlive && p.role === 'VILLAIN');
+  return players.filter((p) => p.isAlive && EVIL_ROLES.has(p.role));
 }
 
 /**
@@ -107,7 +110,10 @@ export function getAliveVillains(players) {
 export function getNightSteps(players) {
   const steps = ['INTRO'];
   const alive = players.filter((p) => p.isAlive);
-  const hasVillain = alive.some((p) => p.role === 'VILLAIN');
+  // Include the Don here too — if a game's plain Villains all die but the Don
+  // survives, the villain "wake up and choose a target" step must still run,
+  // otherwise the night phase would stall with no way to act.
+  const hasVillain = alive.some((p) => EVIL_ROLES.has(p.role));
   const hasHealer = alive.some((p) => p.role === 'HEALER');
   const hasSeer = alive.some((p) => p.role === 'SEER');
 
