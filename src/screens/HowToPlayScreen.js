@@ -9,6 +9,9 @@ import { usePalette }  from '../hooks/usePalette';
 import { useGame }     from '../context/GameContext';
 import { awardBadge }  from '../storage';
 import { logScreenView } from '../utils/analytics';
+import { SceneNightWake, SceneVoteTally, SceneRoleFlip } from './howToPlay/Scenes';
+
+const SCENES = { setup: SceneRoleFlip, night: SceneNightWake, day: SceneVoteTally };
 
 const STEPS = [
   {
@@ -42,10 +45,15 @@ const STEPS = [
       { emoji: '😈', name: 'The Don',   desc: 'A hidden evil ally who appears innocent to the Seer\'s check. Shows up in bigger games (8+ players).' },
       { emoji: '🔮', name: 'Seer',      desc: 'Each night secretly checks one player\'s true alignment.' },
       { emoji: '🌿', name: 'Healer',    desc: 'Protects one player each night. Can protect themselves once.' },
+      { emoji: '🛡️', name: 'Bodyguard', desc: 'Guards one player each night — and dies in their place if they are attacked. Cannot guard the same player twice in a row.' },
+      { emoji: '🧪', name: 'Witch',     desc: 'Holds one life potion and one death potion. Each works only once, the whole game.' },
       { emoji: '🏹', name: 'Hunter',    desc: 'When eliminated by vote, takes one other player with them!' },
       { emoji: '👑', name: 'Chief',     desc: 'Counts as two votes. Can help break voting ties.' },
+      { emoji: '💘', name: 'Cupid',     desc: 'On the first night, binds two players as lovers and shows them to each other. If one dies, the other dies of grief — and if they turn out to be on opposite sides, they abandon both teams and win only by being the last two alive.' },
+      { emoji: '🃏', name: 'Jester',    desc: 'Wins alone — but only by getting the village to VOTE them out. Dying at night does not count.' },
       { emoji: '🧑‍🌾', name: 'Villager', desc: 'No special power — use your wit to find the evil!' },
     ],
+    tip: '💡 Deal your own mix in Setup → Custom, or let the app scale roles to your table size.',
   },
   {
     id: 'night',
@@ -53,9 +61,12 @@ const STEPS = [
     title: 'Night Phase',
     body:
       'The narrator reads the night script aloud. Players wake up one by one:\n\n' +
+      '• Cupid — first night only, binds two lovers\n' +
       '• Evil One — secretly chooses a target to eliminate\n' +
+      '• Bodyguard — secretly guards one player\n' +
       '• Healer — secretly chooses someone to protect\n' +
-      '• Seer — secretly checks one player\'s alignment\n\n' +
+      '• Seer — secretly checks one player\'s alignment\n' +
+      '• Witch — last to wake, and told who was attacked\n\n' +
       'All actions are private — only the narrator (app) records the result.',
     tip: '💡 Keep your role secret! A known Seer becomes target #1.',
   },
@@ -68,7 +79,8 @@ const STEPS = [
       '• Discuss who you think is evil — share observations, logic, suspicions\n' +
       '• When ready, the group votes\n' +
       '• The player with the most votes is eliminated\n' +
-      '• In a tie, no one is eliminated that day',
+      '• In a tie, no one is eliminated that day\n\n' +
+      'Turn on a discussion timer in Settings to keep debates from dragging.',
     tip: '💡 Evil players should blend in — act suspicious of others!',
   },
 ];
@@ -109,6 +121,7 @@ export default function HowToPlayScreen({ navigation }) {
 
   const current = STEPS[step];
   const isLast  = step === STEPS.length - 1;
+  const Scene   = SCENES[current.id];
 
   return (
     <Gradient colors={villainTheme.gradientBg} style={styles.flex}>
@@ -148,6 +161,8 @@ export default function HowToPlayScreen({ navigation }) {
             <Animated.View style={[styles.contentWrap, { opacity: fadeAnim }]}>
               <Text style={styles.stepEmoji}>{current.emoji}</Text>
               <Text style={[styles.stepTitle, { color: C.text }]}>{current.title}</Text>
+
+              {Scene ? <Scene C={C} /> : null}
 
               {current.body ? (
                 <Text style={[styles.stepBody, { color: C.textSecondary }]}>{current.body}</Text>

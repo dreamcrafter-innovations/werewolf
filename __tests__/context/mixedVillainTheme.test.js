@@ -12,7 +12,10 @@ test('START_GAME assigns per-villain theme overrides from selectedThemeIds', () 
   const players = Array.from({ length: 9 }, (_, i) => ({ id: String(i), name: 'P' + i }));
   const next = reducer(state, { type: 'START_GAME', players });
   const villains = next.players.filter(p => p.role === 'VILLAIN');
-  expect(villains.length).toBe(3);
+  // 3 evil at 9 players, but one is upgraded to DON (8+ players, 2+ evil) — the DON is
+  // Seer-proof and carries no theme override, so only the plain VILLAINs draw a theme.
+  expect(next.players.filter(p => p.role === 'VILLAIN' || p.role === 'DON').length).toBe(3);
+  expect(villains.length).toBe(2);
   villains.forEach(v => expect(['MAFIA', 'BHEDIYA', 'VAMPIR']).toContain(v.villainThemeOverride));
   const nonVillains = next.players.filter(p => p.role !== 'VILLAIN');
   nonVillains.forEach(p => expect(p.villainThemeOverride).toBeNull());

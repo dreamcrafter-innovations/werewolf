@@ -96,6 +96,74 @@ export const ROLES = {
     nightAction: false,
     specialAbility: 'DOUBLE_VOTE',
   },
+  WITCH: {
+    id: 'WITCH',
+    name: 'Witch',
+    emoji: '🧪',
+    team: 'good',
+    color: '#9B59B6',
+    bgColor: '#12001A',
+    hint: 'One life potion, one death potion — each used once',
+    tagline: 'Two vials. Two chances. Choose well.',
+    description:
+      'You are the Witch! You hold two potions. The life potion can revive tonight\'s ' +
+      'victim. The death potion can kill anyone you choose. Each potion works ONLY ONCE — ' +
+      'the whole game. Spend them at the right moment!',
+    secretNote: 'You learn who was attacked before you decide 🧪',
+    nightAction: true,
+    nightActionLabel: 'Use a potion',
+  },
+  BODYGUARD: {
+    id: 'BODYGUARD',
+    name: 'Bodyguard',
+    emoji: '🛡️',
+    team: 'good',
+    color: '#5DADE2',
+    bgColor: '#00101A',
+    hint: 'Takes the hit for whoever you guard',
+    tagline: 'They will have to go through you first.',
+    description:
+      'You are the Bodyguard! Each night you guard one player. If the evil ones attack ' +
+      'them, YOU die instead and they live. You cannot guard the same player two nights ' +
+      'in a row — and guarding yourself does nothing.',
+    secretNote: 'Your shield costs your life — guard wisely 🛡️',
+    nightAction: true,
+    nightActionLabel: 'Guard someone',
+  },
+  CUPID: {
+    id: 'CUPID',
+    name: 'Cupid',
+    emoji: '💘',
+    team: 'good',
+    color: '#FF6F91',
+    bgColor: '#1A0010',
+    hint: 'Links two players — if one dies, so does the other',
+    tagline: 'Two hearts, one fate.',
+    description:
+      'You are Cupid! On the first night only, you secretly link two players as lovers. ' +
+      'If one of them ever dies, the other dies of grief. Choose the pair carefully — ' +
+      'you might bind a villager to a monster.',
+    secretNote: 'You act on the FIRST night only 💘',
+    nightAction: true,
+    nightActionLabel: 'Link two lovers',
+  },
+  JESTER: {
+    id: 'JESTER',
+    name: 'Jester',
+    emoji: '🃏',
+    team: 'neutral',
+    color: '#E84393',
+    bgColor: '#1A0014',
+    hint: 'Wins alone — by getting the village to vote you out',
+    tagline: 'The joke is on all of you.',
+    description:
+      'You are the Jester! You do not win with the village OR the evil ones. ' +
+      'You win ONLY if the village votes YOU out. Act suspicious. Be annoying. ' +
+      'Get yourself lynched — and everyone else loses.',
+    secretNote: 'Being killed at night does NOT count — you must be VOTED out 🃏',
+    nightAction: false,
+    specialAbility: 'JESTER_WIN',
+  },
   DON: {
     id: 'DON',
     name: 'The Don',
@@ -113,8 +181,47 @@ export const ROLES = {
   },
 };
 
-export function getRoleAssignment(playerCount, villainCountOverride = 0) {
+// Roles the player may deal by hand in the custom loadout, in display order.
+// VILLAGER is excluded — it is always the filler for whatever slots are left over.
+// DON is excluded — it is an upgrade applied to a VILLAIN, not a slot of its own.
+export const ASSIGNABLE_ROLES = ['VILLAIN', 'SEER', 'HEALER', 'BODYGUARD', 'WITCH', 'HUNTER', 'CHIEF', 'CUPID', 'JESTER'];
+
+const EVIL_IDS = ['VILLAIN', 'DON'];
+
+/**
+ * Total special slots a custom loadout consumes. Anything left over becomes Villagers.
+ */
+export function countCustomRoles(customRoles) {
+  if (!customRoles) return 0;
+  return ASSIGNABLE_ROLES.reduce((sum, id) => sum + Math.max(0, customRoles[id] | 0), 0);
+}
+
+/**
+ * A loadout is playable when it fits inside the table and fields at least one evil —
+ * a zero-evil game is an instant, unwinnable village victory.
+ */
+export function isCustomLoadoutValid(playerCount, customRoles) {
+  if (!customRoles) return true;
+  const total = countCustomRoles(customRoles);
+  return total <= playerCount && (customRoles.VILLAIN | 0) >= 1;
+}
+
+function buildCustomRoles(playerCount, customRoles) {
+  const roles = [];
+  for (const id of ASSIGNABLE_ROLES) {
+    for (let i = 0; i < Math.max(0, customRoles[id] | 0); i++) roles.push(id);
+  }
+  // Defensive clamp — the Setup UI already blocks over-filling, but never deal more
+  // roles than there are players (that would silently drop whoever is last in line).
+  const out = roles.slice(0, playerCount);
+  if (!out.some(r => EVIL_IDS.includes(r))) out[0] = 'VILLAIN';
+  while (out.length < playerCount) out.push('VILLAGER');
+  return out;
+}
+
+export function getRoleAssignment(playerCount, villainCountOverride = 0, customRoles = null) {
   if (playerCount < 4) return null;
+  if (customRoles) return shuffle(buildCustomRoles(playerCount, customRoles));
   const roles = [];
   // Evil count: manual override (1–3, capped at 1/3 of players) or auto-scale
   const autoCount = playerCount >= 10 ? 3 : playerCount >= 6 ? 2 : 1;
@@ -130,6 +237,12 @@ export function getRoleAssignment(playerCount, villainCountOverride = 0) {
   if (playerCount >= 7) roles.push('HUNTER');
   // Include Chief (double vote) at 9+ players
   if (playerCount >= 9) roles.push('CHIEF');
+  // Bigger tables get the chaos roles. Thresholds are spaced so the villager count never
+  // drops below ~1/3 of the table — a game of nothing but power roles has no bluffing room.
+  if (playerCount >= 8)  roles.push('WITCH');
+  if (playerCount >= 11) roles.push('JESTER');
+  if (playerCount >= 13) roles.push('BODYGUARD');
+  if (playerCount >= 14) roles.push('CUPID');
   // Fill remaining with Villagers (Citizens)
   while (roles.length < playerCount) roles.push('VILLAGER');
   const assignment = shuffle(roles);
@@ -152,9 +265,9 @@ function shuffle(arr) {
   return a;
 }
 
-export function getRolePreview(playerCount, villainCountOverride = 0) {
+export function getRolePreview(playerCount, villainCountOverride = 0, customRoles = null) {
   if (playerCount < 4) return [];
-  const assigned = getRoleAssignment(playerCount, villainCountOverride);
+  const assigned = getRoleAssignment(playerCount, villainCountOverride, customRoles);
   const counts = {};
   assigned.forEach((r) => { counts[r] = (counts[r] || 0) + 1; });
   return Object.entries(counts).map(([id, count]) => ({ id, count, ...ROLES[id] }));

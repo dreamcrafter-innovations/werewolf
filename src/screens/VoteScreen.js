@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
@@ -12,8 +13,10 @@ import { ROLES } from '../data/roles';
 import { getTheme } from '../data/villainThemes';
 import { getVoteTally, getVoteWeight } from '../utils/gameLogic';
 import { haptics } from '../utils/haptics';
+import { useKeepAwake } from 'expo-keep-awake';
 
 export default function VoteScreen({ navigation }) {
+  useKeepAwake(); // pass-the-phone voting runs long; screen must not sleep mid-round
   const { state, villainTheme, castVote, resolveVote, hunterRevengeTarget, skipHunterRevenge, startNight } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
@@ -25,6 +28,15 @@ export default function VoteScreen({ navigation }) {
   const [subPhase, setSubPhase] = useState('VOTING');
   const [selected, setSelected] = useState(null);
   const [showRevenge, setShowRevenge] = useState(false);
+
+  // See NightScreen — Night/Day/Vote replace each other in the stack, so the entry
+  // underneath is always Setup. Block hardware back so it can't silently abandon the round.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => sub.remove();
+    }, [])
+  );
 
   const voter = voters[voterIdx];
   const tally = getVoteTally(votes, players);
@@ -78,7 +90,6 @@ export default function VoteScreen({ navigation }) {
   if(showRevenge && phase==='HUNTER_REVENGE') {
     const hunter = players.find(p=>p.id===state.hunterRevenge.hunterId);
     const targets = players.filter(p=>p.isAlive&&p.id!==state.hunterRevenge.hunterId);
-    const hunterRole = getRoleDisplay('HUNTER');
     return (
       <Gradient colors={['#1A0800','#0D0400']} style={styles.flex}>
         <SafeAreaView style={styles.safe}>

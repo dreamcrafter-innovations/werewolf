@@ -126,6 +126,10 @@ describe('START_NIGHT', () => {
       healerProtect: null,
       seerTarget: null,
       seerResult: null,
+      bodyguardProtect: null,
+      witchSave: false,
+      witchPoison: null,
+      cupidPair: null,
     });
   });
 

@@ -84,17 +84,19 @@ describe('getRoleAssignment', () => {
     });
   });
 
-  test('6–9 players get exactly 2 VILLAIN (auto)', () => {
+  // From 8 players up, one VILLAIN is upgraded to DON — still evil, just Seer-proof —
+  // so the evil headcount has to be counted across both ids, not VILLAIN alone.
+  const evilCount = (roles) => roles.filter((r) => r === 'VILLAIN' || r === 'DON').length;
+
+  test('6–9 players get exactly 2 evil (auto)', () => {
     [6, 7, 8, 9].forEach((n) => {
-      const roles = getRoleAssignment(n);
-      expect(roles.filter((r) => r === 'VILLAIN')).toHaveLength(2);
+      expect(evilCount(getRoleAssignment(n))).toBe(2);
     });
   });
 
-  test('10+ players get exactly 3 VILLAIN (auto)', () => {
+  test('10+ players get exactly 3 evil (auto)', () => {
     [10, 12, 16].forEach((n) => {
-      const roles = getRoleAssignment(n);
-      expect(roles.filter((r) => r === 'VILLAIN')).toHaveLength(3);
+      expect(evilCount(getRoleAssignment(n))).toBe(3);
     });
   });
 
@@ -111,13 +113,31 @@ describe('getRoleAssignment', () => {
     expect(getRoleAssignment(6)).toContain('HEALER');
   });
 
-  test('never includes HUNTER or CHIEF or DON', () => {
-    [4, 6, 8, 10, 16].forEach((n) => {
-      const roles = getRoleAssignment(n);
-      expect(roles).not.toContain('HUNTER');
-      expect(roles).not.toContain('CHIEF');
-      expect(roles).not.toContain('DON');
-    });
+  // This used to assert HUNTER/CHIEF/DON were never dealt. They have been dealt since
+  // they were wired into gameplay (see specialRoles.test.js); the assertion was simply
+  // never updated, so it has been failing rather than protecting anything.
+  test('special roles appear only at their player-count thresholds', () => {
+    expect(getRoleAssignment(4)).not.toContain('HUNTER');
+    expect(getRoleAssignment(7)).toContain('HUNTER');
+    expect(getRoleAssignment(8)).not.toContain('CHIEF');
+    expect(getRoleAssignment(9)).toContain('CHIEF');
+    expect(getRoleAssignment(7)).not.toContain('DON');
+    expect(getRoleAssignment(8)).toContain('DON');
+    expect(getRoleAssignment(7)).not.toContain('WITCH');
+    expect(getRoleAssignment(8)).toContain('WITCH');
+    expect(getRoleAssignment(10)).not.toContain('JESTER');
+    expect(getRoleAssignment(11)).toContain('JESTER');
+    expect(getRoleAssignment(12)).not.toContain('BODYGUARD');
+    expect(getRoleAssignment(13)).toContain('BODYGUARD');
+    expect(getRoleAssignment(13)).not.toContain('CUPID');
+    expect(getRoleAssignment(14)).toContain('CUPID');
+  });
+
+  test('villagers never fall below a quarter of the table', () => {
+    for (let n = 4; n <= 16; n++) {
+      const villagers = getRoleAssignment(n).filter((r) => r === 'VILLAGER').length;
+      expect(villagers).toBeGreaterThanOrEqual(Math.floor(n / 4));
+    }
   });
 
   test('fills remaining slots with VILLAGER', () => {

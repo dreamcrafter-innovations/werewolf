@@ -28,14 +28,30 @@ export default function GameOverScreen({ navigation }) {
   const { state, resetGame, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
-  const { winner, players, round } = state;
+  const { winner, players, round, log = [] } = state;
+  const jester = players.find(p => p.role === 'JESTER');
 
   // Mixed-villain mode: the recap should reflect every monster theme that was actually
   // in this game, not just whichever theme happened to be last-selected on Home.
   const allVillains = players.filter(p => p.role === 'VILLAIN');
   const activeVillainTheme = getActiveVillainTheme(allVillains, state.villainThemeId);
 
-  const meta = winner==='VILLAGE' ? {
+  const lovers = players.filter(p => p.loverId);
+
+  const meta = winner==='LOVERS' ? {
+    icon:'💞', title:'THE LOVERS WIN!',
+    sub:lovers.map(p=>p.name).join(' ❤️ '),
+    body:'Bound across enemy lines, they outlived everyone who tried to come between them. The village lost. The monsters lost. Love, improbably, did not. 💞',
+    bg:['#1A0010','#0A0006'],
+    accentColor:ROLES.CUPID.color,
+  } : winner==='JESTER' ? {
+    // The Jester beats both teams outright, so it gets its own ending rather than being
+    // squeezed into the village/evil ternary.
+    icon:'🃏', title:'THE JESTER WINS!', sub:`${jester?.name ?? 'The Jester'} played you all.`,
+    body:`The village walked right into it. ${jester?.name ?? 'The Jester'} wanted to be voted out — and you obliged. Village and villains both lose. 🃏`,
+    bg:['#1A0014','#0A0008'],
+    accentColor:ROLES.JESTER.color,
+  } : winner==='VILLAGE' ? {
     icon:'🎉', title:t('over_village_title'), sub:t('over_village_sub'),
     villainSub: activeVillainTheme.loseText,
     body:t('over_village_body'), bg:['#001A08','#002A10'],
@@ -207,7 +223,9 @@ export default function GameOverScreen({ navigation }) {
                   return (
                     <View key={p.id} style={[styles.allRow,{backgroundColor:C.card,borderColor:C.cardBorder},!p.isAlive&&{opacity:0.6}]}>
                       <Text style={[styles.allAv,!p.isAlive&&{opacity:0.4}]}>{p.avatar}</Text>
-                      <Text style={[styles.allName,{color:p.isAlive?C.text:C.textDim},!p.isAlive&&{textDecorationLine:'line-through'}]}>{p.name}</Text>
+                      <Text style={[styles.allName,{color:p.isAlive?C.text:C.textDim},!p.isAlive&&{textDecorationLine:'line-through'}]}>
+                        {p.name}{p.loverId ? ' 💞' : ''}
+                      </Text>
                       <View style={[styles.rolePill,{backgroundColor:rd.color+'33'}]}>
                         <Text style={styles.pilEmoji}>{rd.emoji}</Text>
                         <Text style={[styles.pilName,{color:rd.color}]}>{rd.name}</Text>
@@ -217,6 +235,24 @@ export default function GameOverScreen({ navigation }) {
                   );
                 })}
               </View>
+
+              {/* Recap — the whole game, night by night */}
+              {log.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle,{color:C.text}]}>📜 How it happened</Text>
+                  {[...new Set(log.map(e => e.round))].sort((a,b)=>a-b).map(r => (
+                    <View key={r} style={[styles.recapRound,{backgroundColor:C.card,borderColor:C.cardBorder}]}>
+                      <Text style={[styles.recapRoundLabel,{color:C.primary}]}>Round {r}</Text>
+                      {log.filter(e => e.round === r).map((e, i) => (
+                        <View key={`${r}-${i}`} style={styles.recapRow}>
+                          <View style={[styles.recapDot,{backgroundColor:e.phase==='NIGHT'?C.textDim:C.primary}]}/>
+                          <Text style={[styles.recapText,{color:C.textSecondary}]}>{e.text}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              )}
 
               <Pressable style={[styles.playBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>{resetGame();navigation.navigate('Setup');}}>
                 <Text style={styles.playBtnTxt}>{t('over_play_again')}</Text>
@@ -306,12 +342,16 @@ const styles = StyleSheet.create({
   pilEmoji:{fontSize:13},
   pilName:{...FONTS.small,fontWeight:'700'},
   deathIcon:{fontSize:16},
+  recapRound:{borderRadius:12,padding:12,marginBottom:8,borderWidth:1},
+  recapRoundLabel:{...FONTS.small,fontWeight:'800',letterSpacing:1,marginBottom:8,textTransform:'uppercase'},
+  recapRow:{flexDirection:'row',alignItems:'flex-start',gap:8,marginBottom:6},
+  recapDot:{width:6,height:6,borderRadius:3,marginTop:7},
+  recapText:{...FONTS.small,flex:1,lineHeight:19},
   playBtn:{width:'100%',maxWidth:380,borderRadius:16,paddingVertical:18,alignItems:'center',marginBottom:12,shadowOffset:{width:0,height:0},shadowOpacity:0.4,shadowRadius:10,elevation:6},
   playBtnTxt:{color:'#000',fontWeight:'800',fontSize:18},
   shareBtn:{width:'100%',maxWidth:380,borderRadius:16,paddingVertical:16,alignItems:'center',marginBottom:12,borderWidth:1.5},
   shareBtnTxt:{fontWeight:'800',fontSize:16},
   homeBtn:{width:'100%',maxWidth:380,borderRadius:16,paddingVertical:16,alignItems:'center',borderWidth:1},
   homeBtnTxt:{fontWeight:'700',fontSize:16},
-  offscreen:{position:'absolute',top:10000,left:0,opacity:0},
   offscreen:{position:'absolute',top:10000,left:0,opacity:0},
 });

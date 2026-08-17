@@ -122,6 +122,19 @@ export async function saveAlltimeStats(stats) {
 }
 
 /**
+ * Did this player win the round? The Jester is its own faction — when it wins, both
+ * the village and the evil team lose, so this cannot be a simple good/evil comparison.
+ */
+function playerWon(player, winner) {
+  const isEvil = player.role === 'VILLAIN' || player.role === 'DON';
+  // Cross-faction lovers win as their own team of two, so neither side gets credit.
+  if (winner === 'LOVERS') return !!player.loverId;
+  if (winner === 'JESTER') return player.role === 'JESTER';
+  if (player.role === 'JESTER') return false;
+  return (isEvil && winner === 'VILLAIN') || (!isEvil && winner === 'VILLAGE');
+}
+
+/**
  * Record one completed round into both session and all-time stats.
  * @param {object} params
  * @param {Array}  params.players       - full player list with role, isAlive
@@ -137,7 +150,7 @@ export async function recordRoundResult({ players, winner, villainThemeId }) {
       if (!p.id) continue;
       const existing = session.playerStats[p.id] ?? { name: p.name, wins: 0, losses: 0, roundsPlayed: 0, evilWins: 0 };
       const isEvil = p.role === 'VILLAIN' || p.role === 'DON';
-      const won    = (isEvil && winner === 'VILLAIN') || (!isEvil && winner === 'VILLAGE');
+      const won    = playerWon(p, winner);
       session.playerStats[p.id] = {
         ...existing,
         name:         p.name,
@@ -160,7 +173,7 @@ export async function recordRoundResult({ players, winner, villainThemeId }) {
       const key = p.id;
       const existing = alltime.playerStats[key] ?? { name: p.name, wins: 0, losses: 0, roundsPlayed: 0, evilWins: 0, lastVillain: null };
       const isEvil = p.role === 'VILLAIN' || p.role === 'DON';
-      const won    = (isEvil && winner === 'VILLAIN') || (!isEvil && winner === 'VILLAGE');
+      const won    = playerWon(p, winner);
       alltime.playerStats[key] = {
         ...existing,
         name:         p.name,
@@ -227,6 +240,7 @@ const EMPTY_META = {
   currentStreak: 0,
   bestStreak: 0,
   lastPlayedDate: null, // YYYY-MM-DD
+  dailyCompletedCount: 0, // total Daily Challenges marked complete — drives the daily_7 badge
 };
 
 function todayKey() {

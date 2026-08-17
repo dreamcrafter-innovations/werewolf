@@ -15,14 +15,18 @@ import { fill }        from '../utils/interpolate';
 import Gradient        from '../components/Gradient';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS }       from '../components/theme';
-import { AVATAR_GROUPS, getAvatarEmoji, getRolePreview } from '../data/roles';
+import { AVATAR_GROUPS, ASSIGNABLE_ROLES, ROLES, countCustomRoles, getAvatarEmoji, getRolePreview, isCustomLoadoutValid } from '../data/roles';
 import { loadProfiles, saveProfiles, makeId } from '../storage';
 
-const FALLBACK_AVATARS = ['👦','👧','🧒','👩','👨','🧑','👴','👵',
+export const FALLBACK_AVATARS = ['👦','👧','🧒','👩','👨','🧑','👴','👵',
   '🧔','👲','👳','🧕','🕵️','👮','🧙','🧝'];
 
+// A hand-dealt loadout starts from the roles a standard game always has, so the
+// stepper screen opens on something playable rather than an empty, invalid table.
+const DEFAULT_LOADOUT = { VILLAIN: 1, SEER: 1, HEALER: 1 };
+
 export default function SetupScreen({ navigation }) {
-  const { state, startGame, villainTheme } = useGame();
+  const { state, startGame, villainTheme, setCustomRoles } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
 
@@ -56,7 +60,23 @@ export default function SetupScreen({ navigation }) {
   const updateName   = (id, name) => setPlayers(players.map(p => p.id === id ? { ...p, name } : p));
   const applyAvatar  = (id, emoji) => { setPlayers(players.map(p => p.id === id ? { ...p, avatar: emoji } : p)); setAvatarTarget(null); };
 
-  const canStart = players.length >= 4 && players.every(p => p.name.trim().length > 0);
+  // ── custom role loadout ──────────────────────────────────────────────
+  const custom      = state.customRoles;
+  const isCustom    = !!custom;
+  const specialUsed = countCustomRoles(custom);
+  const loadoutOk   = isCustomLoadoutValid(players.length, custom);
+
+  const bumpRole = (id, delta) => {
+    const base  = custom ?? DEFAULT_LOADOUT;
+    const next  = Math.max(0, (base[id] | 0) + delta);
+    // Never let the specials outgrow the table — the remainder has to be Villagers.
+    if (delta > 0 && countCustomRoles(base) >= players.length) return;
+    setCustomRoles({ ...base, [id]: next });
+  };
+
+  const canStart = players.length >= 4
+    && players.every(p => p.name.trim().length > 0)
+    && loadoutOk;
   const canQuickFill = players.some((p, i) => !p.name.trim() && i < 6);
 
   const quickFillPlayers = () => {
@@ -151,7 +171,7 @@ export default function SetupScreen({ navigation }) {
 
   // ── render: setup ────────────────────────────────────────────────────
   if (view === 'setup') {
-    const rolePreview = getRolePreview(players.length, state.villainCount);
+    const rolePreview = getRolePreview(players.length, state.villainCount, custom);
     return (
       <Gradient colors={villainTheme.gradientBg} style={s.flex}>
         <SafeAreaView style={s.flex}>
@@ -166,6 +186,25 @@ export default function SetupScreen({ navigation }) {
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {/* Repeat groups are the retention mechanism here — one tap to reload the
+                  last table, ahead of the name inputs rather than buried behind Rosters. */}
+              {profiles.length > 0 && (
+                <View style={s.savedGroupsWrap}>
+                  <Text style={[s.savedGroupsLabel, { color: C.textSecondary }]}>{t('roster_title')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.savedGroupsRow}>
+                    {profiles.map(g => (
+                      <Pressable key={g.id} style={[s.savedGroupChip, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => loadGroupIntoSetup(g)}>
+                        <Text style={s.savedGroupAvatars} numberOfLines={1}>
+                          {g.players.slice(0, 4).map(p => getAvatarEmoji(p.avatarId)).join(' ')}
+                        </Text>
+                        <Text style={[s.savedGroupName, { color: C.text }]} numberOfLines={1}>{g.name}</Text>
+                        <Text style={[s.savedGroupCount, { color: C.textDim }]}>{fill(t('roster_players'), { count: g.players.length })}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
               <Pressable style={[s.previewBanner, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => setShowPreview(!showPreview)}>
                 <Text style={[s.previewText, { color: C.textSecondary }]}>
                   {fill(t('setup_preview_btn'), { count: players.length, arrow: showPreview ? '▲' : '▼' })}
@@ -174,7 +213,18 @@ export default function SetupScreen({ navigation }) {
 
               {showPreview && (
                 <View style={[s.previewBox, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
-                  {rolePreview.map(r => {
+                  {/* Auto = the built-in distribution table. Custom = deal the deck yourself. */}
+                  <View style={s.modeRow}>
+                    {[{ on: !isCustom, label: '⚖️ Auto', onPress: () => setCustomRoles(null) },
+                      { on: isCustom,  label: '🎛️ Custom', onPress: () => setCustomRoles(custom ?? DEFAULT_LOADOUT) }].map(m => (
+                      <Pressable key={m.label} onPress={m.onPress}
+                        style={[s.modeBtn, { borderColor: m.on ? C.primary : C.cardBorder, backgroundColor: m.on ? C.primary + '22' : 'transparent' }]}>
+                        <Text style={[s.modeTxt, { color: m.on ? C.primary : C.textSecondary }]}>{m.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  {!isCustom && rolePreview.map(r => {
                     const ro = villainTheme.roles[r.id];
                     const color = r.id === 'VILLAIN' ? villainTheme.color : r.color;
                     return (
@@ -187,6 +237,49 @@ export default function SetupScreen({ navigation }) {
                       </View>
                     );
                   })}
+
+                  {isCustom && (
+                    <>
+                      {ASSIGNABLE_ROLES.map(id => {
+                        const role  = ROLES[id];
+                        const ro    = villainTheme.roles[id];
+                        const color = id === 'VILLAIN' ? villainTheme.color : role.color;
+                        const count = custom[id] | 0;
+                        const atCap = specialUsed >= players.length;
+                        return (
+                          <View key={id} style={s.loadoutRow}>
+                            <Text style={s.previewEmoji}>{ro?.emoji ?? role.emoji}</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[s.previewName, { color }]}>{ro?.name ?? role.name}</Text>
+                              <Text style={[s.loadoutHint, { color: C.textDim }]} numberOfLines={2}>{ro?.hint ?? role.hint}</Text>
+                            </View>
+                            <Pressable style={[s.stepBtn, { borderColor: C.cardBorder, opacity: count === 0 ? 0.35 : 1 }]}
+                              onPress={() => bumpRole(id, -1)} disabled={count === 0}>
+                              <Text style={[s.stepTxt, { color: C.text }]}>−</Text>
+                            </Pressable>
+                            <Text style={[s.stepCount, { color: count ? color : C.textDim }]}>{count}</Text>
+                            <Pressable style={[s.stepBtn, { borderColor: C.cardBorder, opacity: atCap ? 0.35 : 1 }]}
+                              onPress={() => bumpRole(id, 1)} disabled={atCap}>
+                              <Text style={[s.stepTxt, { color: C.text }]}>+</Text>
+                            </Pressable>
+                          </View>
+                        );
+                      })}
+
+                      <View style={[s.loadoutFooter, { borderTopColor: C.cardBorder }]}>
+                        <Text style={[s.loadoutSummary, { color: C.textSecondary }]}>
+                          {specialUsed} special · {Math.max(0, players.length - specialUsed)} villagers · {players.length} players
+                        </Text>
+                        {!loadoutOk && (
+                          <Text style={[s.loadoutWarn, { color: C.danger }]}>
+                            {(custom.VILLAIN | 0) < 1
+                              ? '⚠️ Add at least one evil role — the village would win instantly.'
+                              : '⚠️ Too many roles for this many players. Remove some or add players.'}
+                          </Text>
+                        )}
+                      </View>
+                    </>
+                  )}
                 </View>
               )}
 
@@ -447,6 +540,14 @@ const s = StyleSheet.create({
   // scroll content
   content:         { padding: 20, paddingBottom: 60 },
   note:            { ...FONTS.small, textAlign: 'center', lineHeight: 20 },
+  // saved groups (surfaced above name inputs — see setup view)
+  savedGroupsWrap: { marginBottom: 16 },
+  savedGroupsLabel:{ ...FONTS.label, fontSize: 12, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 },
+  savedGroupsRow:  { flexDirection: 'row', gap: 10, paddingRight: 4 },
+  savedGroupChip:  { borderRadius: 14, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 14, minWidth: 120, alignItems: 'center' },
+  savedGroupAvatars:{ fontSize: 16, letterSpacing: 1, marginBottom: 4 },
+  savedGroupName:  { ...FONTS.small, fontWeight: '700', marginBottom: 2 },
+  savedGroupCount: { fontSize: 11 },
   // role preview
   previewBanner:   { borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, alignItems: 'center' },
   previewText:     { ...FONTS.small },
@@ -456,6 +557,18 @@ const s = StyleSheet.create({
   previewName:     { ...FONTS.body, fontWeight: '700' },
   previewCount:    { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   previewCountText:{ ...FONTS.label, fontSize: 13 },
+  // custom loadout
+  modeRow:         { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  modeBtn:         { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
+  modeTxt:         { ...FONTS.small, fontWeight: '700' },
+  loadoutRow:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  loadoutHint:     { ...FONTS.small, fontSize: 11, marginTop: 1 },
+  stepBtn:         { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stepTxt:         { fontSize: 18, fontWeight: '800', lineHeight: 20 },
+  stepCount:       { ...FONTS.body, fontWeight: '800', minWidth: 20, textAlign: 'center' },
+  loadoutFooter:   { borderTopWidth: 1, paddingTop: 10, marginTop: 4, gap: 6 },
+  loadoutSummary:  { ...FONTS.small, textAlign: 'center' },
+  loadoutWarn:     { ...FONTS.small, textAlign: 'center', fontWeight: '700', lineHeight: 18 },
   // player row (setup + editGroup shared)
   playerRow:       { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 10, marginBottom: 10, gap: 10, borderWidth: 1 },
   num:             { ...FONTS.small, width: 20, textAlign: 'center' },

@@ -9,7 +9,7 @@ import { usePalette }  from '../hooks/usePalette';
 import { useGame }     from '../context/GameContext';
 import { VILLAIN_THEME_LIST, getTheme } from '../data/villainThemes';
 import {
-  loadDailyChallenge, saveDailyChallenge, loadEarnedBadges, awardBadge,
+  loadDailyChallenge, saveDailyChallenge, awardBadge, loadMeta, saveMeta,
 } from '../storage';
 import { logScreenView, logDailyChallengeStarted } from '../utils/analytics';
 
@@ -75,11 +75,13 @@ export default function DailyScreen({ navigation }) {
     const updated = { ...challenge, completed: true };
     await saveDailyChallenge(updated);
     setCompleted(true);
-    // Award daily badge
-    const earned = await loadEarnedBadges();
+    // daily_1 on the first completion ever; daily_7 once 7 have been completed (not
+    // necessarily consecutive — the count lives in meta alongside the game-play streak).
     await awardBadge('daily_1');
-    // Count completed days (simplified — increment streak in storage)
-    // Note: full streak logic can be added in Phase 3
+    const meta = await loadMeta();
+    const dailyCompletedCount = (meta.dailyCompletedCount || 0) + 1;
+    await saveMeta({ ...meta, dailyCompletedCount });
+    if (dailyCompletedCount >= 7) await awardBadge('daily_7');
   }
 
   // getTheme() attaches roles + palette to the raw theme object

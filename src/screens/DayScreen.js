@@ -1,6 +1,7 @@
-﻿import React, { useRef, useEffect } from 'react';
-import { View, Text, Pressable, Animated, ScrollView, StyleSheet } from 'react-native';
+﻿import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { View, Text, Pressable, Animated, ScrollView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
@@ -14,16 +15,69 @@ import BurstEffect from '../components/BurstEffect';
 import KillRevealArt from '../components/KillRevealArt';
 import { getKillParticles, SAVE_BURST_PARTICLES, QUIET_NIGHT_PARTICLES } from '../data/themeParticles';
 import { getActiveVillainTheme, getTheme } from '../data/villainThemes';
+import { loadSettings } from '../storage';
+import { haptics } from '../utils/haptics';
+import { useSpeech } from '../hooks/useSpeech';
+import { useKeepAwake } from 'expo-keep-awake';
+
+function mmss(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 export default function DayScreen({ navigation }) {
+  useKeepAwake(); // discussion timer runs long; screen must not sleep mid-round
   const { state, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
   const { players, lastNightResult, round } = state;
-  const { killedId, savedById } = lastNightResult;
+  const { killedId, savedById, guardedById, deaths = [] } = lastNightResult;
+  const { speak, stop } = useSpeech();
 
   const killedPlayer = players.find(p=>p.id===killedId);
   const savedPlayer  = players.find(p=>p.id===savedById);
+  const guardedPlayer = players.find(p=>p.id===guardedById);
+  // The hero card covers the villain's kill; poison and grief deaths are listed under it
+  // so a night with several casualties reads as several events, not one.
+  const extraDeaths = deaths.filter(d => d.id !== killedId);
+  const showResultCard = !!killedPlayer || !!savedById || extraDeaths.length === 0;
+
+  // ── Discussion timer (0 / off in Settings means it never appears) ───────────
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [paused, setPaused]     = useState(false);
+  const [limit, setLimit]       = useState(0);
+
+  useEffect(() => {
+    loadSettings().then(s => {
+      const secs = s?.dayTimerSeconds ?? 0;
+      if (secs > 0) { setLimit(secs); setTimeLeft(secs); }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0 || paused) return;
+    const id = setTimeout(() => setTimeLeft(v => v - 1), 1000);
+    return () => clearTimeout(id);
+  }, [timeLeft, paused]);
+
+  useEffect(() => {
+    if (timeLeft !== 0) return;
+    haptics.warning();
+    speak('Time is up. Villagers, cast your votes.');
+  }, [timeLeft]);
+
+  useEffect(() => () => { stop(); }, []);
+
+  // See NightScreen — Night/Day/Vote replace each other in the stack, so the entry
+  // underneath is always Setup. Block hardware back so it can't silently abandon the round.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => sub.remove();
+    }, [])
+  );
+
   const alive = players.filter(p=>p.isAlive);
   const dead  = players.filter(p=>!p.isAlive);
   // Mixed-villain mode: last night's flavor text reflects whichever villain theme(s)
@@ -54,6 +108,17 @@ export default function DayScreen({ navigation }) {
       Animated.timing(sunFade,  {toValue:1,duration:800,useNativeDriver:true}),
       Animated.timing(cardSlide,{toValue:0,duration:600,useNativeDriver:true}),
     ]).start();
+    // Narrate the morning reveal — the moment everyone at the table is listening.
+    const headline = killedPlayer
+      ? `The sun rises. ${killedPlayer.name} did not survive the night.`
+      : savedById
+        ? `The sun rises. Someone was attacked last night, but they survived.`
+        : `The sun rises. Nobody died last night.`;
+    const extras = extraDeaths.map(d => {
+      const n = players.find(p=>p.id===d.id)?.name ?? 'Someone';
+      return d.reason === 'LOVER' ? `${n} died of grief.` : `${n} was found poisoned.`;
+    }).join(' ');
+    speak(`${headline} ${extras}`.trim());
   },[]);
 
   // Dead players show their own theme's role flavor (a villain keeps their theme even
@@ -94,6 +159,7 @@ export default function DayScreen({ navigation }) {
             </Animated.View>
 
             {/* Night result card */}
+            {showResultCard && (
             <Animated.View style={[
               styles.resultCard,
               killedPlayer ? {backgroundColor:C.evil+'25',borderColor:C.evil} : {backgroundColor:(C.village||'#27AE60')+'18',borderColor:C.village||'#27AE60'},
@@ -135,7 +201,30 @@ export default function DayScreen({ navigation }) {
                   <Text style={[styles.flavor,{color:C.textDim}]}>{activeVillainTheme.quietFlavor ?? fill(t('day_quiet_flavor'),{villain:activeVillainTheme.label})}</Text>
                 </>
               )}
+              {guardedPlayer && (
+                <Text style={[styles.flavor,{color:C.textDim,marginTop:10}]}>
+                  🛡️ The blade meant for {guardedPlayer.name} found the Bodyguard instead.
+                </Text>
+              )}
             </Animated.View>
+            )}
+
+            {/* Poison / grief deaths — anything the hero card above did not cover */}
+            {extraDeaths.length > 0 && (
+              <View style={[styles.extraBox,{backgroundColor:C.evil+'18',borderColor:C.evil+'66'}]}>
+                <Text style={[styles.extraTitle,{color:C.text}]}>Also found this morning</Text>
+                {extraDeaths.map(d => {
+                  const p = players.find(q=>q.id===d.id);
+                  if (!p) return null;
+                  return (
+                    <Text key={d.id} style={[styles.extraLine,{color:C.textSecondary}]}>
+                      {d.reason === 'LOVER' ? '💔' : '🧪'} {p.avatar} {p.name} —{' '}
+                      {d.reason === 'LOVER' ? 'died of a broken heart' : 'poisoned in their sleep'}
+                    </Text>
+                  );
+                })}
+              </View>
+            )}
 
             {/* Alive */}
             <View style={styles.section}>
@@ -176,6 +265,27 @@ export default function DayScreen({ navigation }) {
             <View style={[styles.discussBox,{backgroundColor:C.primary+'10',borderColor:C.primary+'30'}]}>
               <Text style={[styles.discussTitle,{color:C.primary}]}>{t('day_discuss_title')}</Text>
               <Text style={[styles.discussText,{color:C.textSecondary}]}>{fill(t('day_discuss_text'),{villain:activeVillainTheme.label})}</Text>
+
+              {timeLeft !== null && (
+                <>
+                  <Text style={[styles.timer,{color:timeLeft===0?(C.danger||'#E74C3C'):C.primary}]}>
+                    {timeLeft === 0 ? "⏰ Time's up!" : mmss(timeLeft)}
+                  </Text>
+                  <View style={styles.timerBarWrap}>
+                    <View style={[styles.timerBar,{backgroundColor:C.cardBorder}]}>
+                      <View style={[styles.timerFill,{width:`${limit?(timeLeft/limit)*100:0}%`,backgroundColor:timeLeft===0?(C.danger||'#E74C3C'):C.primary}]}/>
+                    </View>
+                  </View>
+                  <View style={styles.timerBtns}>
+                    <Pressable style={[styles.timerBtn,{borderColor:C.cardBorder}]} onPress={()=>setPaused(!paused)} disabled={timeLeft===0}>
+                      <Text style={[styles.timerBtnTxt,{color:timeLeft===0?C.textDim:C.textSecondary}]}>{paused?'▶ Resume':'⏸ Pause'}</Text>
+                    </Pressable>
+                    <Pressable style={[styles.timerBtn,{borderColor:C.cardBorder}]} onPress={()=>{setTimeLeft(limit);setPaused(false);}}>
+                      <Text style={[styles.timerBtnTxt,{color:C.textSecondary}]}>↻ Reset</Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </View>
 
             {ghostGossip.length > 0 && (
@@ -229,6 +339,16 @@ const styles = StyleSheet.create({
   discussBox:{width:'100%',maxWidth:380,borderRadius:16,padding:18,borderWidth:1,marginBottom:24,alignItems:'center'},
   discussTitle:{...FONTS.subtitle,marginBottom:8},
   discussText:{...FONTS.body,textAlign:'center',lineHeight:24},
+  extraBox:{width:'100%',maxWidth:380,borderRadius:16,padding:16,borderWidth:1,marginBottom:24},
+  extraTitle:{...FONTS.body,fontWeight:'700',marginBottom:8,textAlign:'center'},
+  extraLine:{...FONTS.small,lineHeight:20,textAlign:'center',marginBottom:4},
+  timer:{fontSize:34,fontWeight:'800',marginTop:14,letterSpacing:1},
+  timerBarWrap:{width:'100%',marginTop:10},
+  timerBar:{height:5,borderRadius:3,overflow:'hidden'},
+  timerFill:{height:'100%',borderRadius:3},
+  timerBtns:{flexDirection:'row',gap:10,marginTop:12},
+  timerBtn:{borderWidth:1,borderRadius:10,paddingHorizontal:16,paddingVertical:8},
+  timerBtnTxt:{...FONTS.small,fontWeight:'700'},
   gossipBox:{width:'100%',maxWidth:380,borderRadius:14,padding:14,borderWidth:1,marginBottom:20},
   gossipTitle:{...FONTS.body,fontWeight:'700',marginBottom:8},
   gossipLine:{...FONTS.small,lineHeight:18,marginBottom:5},

@@ -11,17 +11,18 @@ import { FONTS } from '../components/theme';
 import { VILLAIN_THEME_LIST } from '../data/villainThemes';
 import { ROLES } from '../data/roles';
 import { logThemeSelected, logScreenView } from '../utils/analytics';
-import { loadSettings, saveSettings } from '../storage';
+import { loadSettings, saveSettings, makeId } from '../storage';
+import { FALLBACK_AVATARS } from './SetupScreen';
 
 export default function HomeScreen({ navigation }) {
-  const { resetGame, state, setVillainTheme, toggleThemeSelect, selectAllThemes, setKnowsAllies, setVillainCount, setAllowGhostVotes, villainTheme } = useGame();
+  const { resetGame, state, startGame, setVillainTheme, toggleThemeSelect, selectAllThemes, setKnowsAllies, setVillainCount, setAllowGhostVotes, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
   const moonPulse = useRef(new Animated.Value(1)).current;
   const titleFade = useRef(new Animated.Value(0)).current;
   const btnScale = useRef(new Animated.Value(0.85)).current;
   const [showInternational, setShowInternational] = useState(false);
-  const [narratorEnabled, setNarratorEnabled] = useState(false);
+  const [narratorEnabled, setNarratorEnabled] = useState(true); // default on — see useSpeech
   const [themeScrollInfo, setThemeScrollInfo] = useState({ canLeft: false, canRight: true });
   const themeFlatListRef = useRef(null);
   const themeLeftOpacity  = useRef(new Animated.Value(0)).current;
@@ -58,6 +59,18 @@ export default function HomeScreen({ navigation }) {
     setNarratorEnabled(next);
     const s = (await loadSettings()) ?? {};
     await saveSettings({ ...s, narratorEnabled: next });
+  }
+
+  // One tap into a playable game — default names, auto role distribution. Setup is the
+  // biggest abandonment point in a pass-the-phone game, so this skips it entirely; names
+  // stay editable in-game via nothing special, they just say "Player 1" etc.
+  function quickStart() {
+    resetGame(state.villainThemeId);
+    const players = FALLBACK_AVATARS.slice(0, 6).map((avatar, i) => ({
+      id: makeId(), name: `Player ${i + 1}`, avatar,
+    }));
+    startGame(players);
+    navigation.navigate('RoleReveal');
   }
 
   // When the visible theme list changes (international toggle), reset right-arrow and scroll to start
@@ -288,13 +301,19 @@ export default function HomeScreen({ navigation }) {
 
             <Animated.View style={[styles.btnWrap,{transform:[{scale:btnScale}]}]}>
               <Pressable style={({pressed})=>[styles.btn,{backgroundColor:C.primary,shadowColor:C.primary},pressed&&{opacity:0.8}]}
-                onPress={()=>{
-                  resetGame(state.villainThemeId);
-                  navigation.navigate('Setup');
-                }}>
-                <Text style={styles.btnText}>{t('home_start_btn')}</Text>
+                onPress={quickStart}>
+                <Text style={styles.btnText}>{t('home_quick_start_btn')}</Text>
               </Pressable>
             </Animated.View>
+
+            <Pressable
+              style={[styles.customSetupBtn,{borderColor:C.cardBorder}]}
+              onPress={()=>{
+                resetGame(state.villainThemeId);
+                navigation.navigate('Setup');
+              }}>
+              <Text style={[styles.customSetupTxt,{color:C.textSecondary}]}>{t('home_start_btn')}</Text>
+            </Pressable>
 
             <Pressable
               style={[styles.howToBtn,{borderColor:C.cardBorder}]}
@@ -370,5 +389,7 @@ const styles = StyleSheet.create({
   btnText:{...FONTS.subtitle,color:'#000',fontWeight:'800',fontSize:18},
   howToBtn:{marginTop:14,borderRadius:12,borderWidth:1,paddingVertical:11,paddingHorizontal:24,alignItems:'center',width:'100%',maxWidth:320},
   howToBtnText:{fontSize:14,fontWeight:'600'},
+  customSetupBtn:{marginTop:10,borderRadius:14,borderWidth:1,paddingVertical:13,paddingHorizontal:24,alignItems:'center',width:'100%',maxWidth:320},
+  customSetupTxt:{...FONTS.body,fontWeight:'700'},
   note:{...FONTS.small,textAlign:'center',marginTop:20},
 });

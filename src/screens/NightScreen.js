@@ -1,6 +1,7 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Pressable, Animated, ScrollView, StyleSheet } from 'react-native';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, Pressable, Animated, ScrollView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
@@ -8,31 +9,48 @@ import { fill } from '../utils/interpolate';
 import Gradient from '../components/Gradient';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
-import { getRandomProphecy } from '../data/roles';
-import { getNightSteps } from '../utils/gameLogic';
+import { getRandomProphecy, ROLES } from '../data/roles';
+import { getLoverPair, getNightSteps } from '../utils/gameLogic';
 import { useSpeech } from '../hooks/useSpeech';
 import { getActiveVillainTheme, getTheme } from '../data/villainThemes';
 import { haptics } from '../utils/haptics';
+import { useKeepAwake } from 'expo-keep-awake';
+import { loadSettings, saveSettings } from '../storage';
 
 export default function NightScreen({ navigation }) {
-  const { state, villainTheme, setVillainTarget, setHealerProtect, setSeerCheck, resolveNight } = useGame();
+  useKeepAwake(); // night discussion runs long; screen must not sleep mid-round
+  const { state, villainTheme, setVillainTarget, setHealerProtect, setBodyguardProtect,
+          setWitchSave, setWitchPoison, setCupidPair, setSeerCheck, resolveNight } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
-  const { players, round } = state;
+  const { players, round, witchHealUsed, witchPoisonUsed, cupidDone, lastBodyguardTarget } = state;
   const alive = players.filter(p=>p.isAlive);
   const aliveVillains = alive.filter(p=>p.role==='VILLAIN');
   // Mixed-villain mode: alive villains may carry different theme overrides —
   // combine them for the shared "wake up" narration each night.
   const activeVillainTheme = getActiveVillainTheme(aliveVillains, state.villainThemeId);
-  const steps = getNightSteps(alive);
+  // Frozen for the whole night. Recomputing per render would reshuffle the list the
+  // moment a step flips its own flag — binding the lovers sets cupidDone, which drops
+  // CUPID out of the array and slides every later step down one, silently skipping the
+  // villains' turn. The screen remounts each night, so this still refreshes per round.
+  const steps = useRef(getNightSteps(alive, { round, witchHealUsed, witchPoisonUsed, cupidDone })).current;
   const [stepIdx, setStepIdx] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [pair, setPair] = useState([]);          // Cupid picks exactly two
+  const [lifePotion, setLifePotion] = useState(false);
   const [seerResult, setSeerResult] = useState(null);
   const [seerResultTheme, setSeerResultTheme] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const prophecy = useRef(getRandomProphecy()).current;
   const step = steps[stepIdx];
-  const { speak, stop } = useSpeech();
+  const { speak, stop, setEnabled } = useSpeech();
+  // Shown once ever, on the very first Night screen — narration defaults on (useSpeech),
+  // this is the acknowledge/opt-out moment so a first-time user notices it exists at all.
+  const [showNarratorPrompt, setShowNarratorPrompt] = useState(false);
+
+  // The Witch acts after the attack is chosen, so she is told who was targeted.
+  const victim = players.find(p => p.id === state.nightActions.villainTarget);
+  const loverPair = getLoverPair(players);
 
   // Build step metadata — villain night wake comes from theme
   const getMetaForStep = (s) => {
@@ -42,24 +60,63 @@ export default function NightScreen({ navigation }) {
     const te = villainTheme.roles?.SEER?.emoji || '🔮';
     switch(s) {
       case 'INTRO':   return { icon:'🌑', title:t('night_intro_title'),   script:t('night_intro_script'),   action:null,                    bg:[C.bg,'#02020E'] };
+      case 'CUPID':   return { icon:'💘', title:'Cupid, wake up!', script:'Cupid, open your eyes.\nChoose TWO players to bind together as lovers.\n\nIf either of them ever dies, the other dies of grief. 💔\n\nYou will not wake again.', action:'Link two lovers', bg:[C.bg,'#1A0010'] };
+      case 'LOVERS':  return loverPair
+        ? { icon:'💞', title:'Lovers, open your eyes!', script:'Narrator: wake ONLY these two players and show them this screen.\n\nEveryone else stays asleep.', action:null, bg:[C.bg,'#1A0010'] }
+        : { icon:'🌙', title:'No one was bound', script:'Cupid bound no one tonight. Everyone stays asleep.', action:null, bg:[C.bg,'#1A0010'] };
       case 'VILLAIN':  return { icon:activeVillainTheme.emoji, title:activeVillainTheme.nightWake, script:activeVillainTheme.nightInstruction, action:t('night_choose_target'), bg:[activeVillainTheme.bgColor||C.bg,'#050000'] };
+      case 'BODYGUARD': return { icon:'🛡️', title:'Bodyguard, wake up!', script:`Bodyguard, open your eyes.\nWho do you want to guard tonight?\n\nIf they are attacked, YOU die in their place.${lastBodyguardTarget ? '\n\n(You cannot guard the same player two nights in a row.)' : ''}`, action:'Guard someone', bg:[C.bg,'#00101A'] };
       case 'HEALER':  return { icon:ve, title:`${vn}, wake up!`, script:`${vn}, open your eyes.\nWhich player do you want to protect tonight?\n\n(You can protect yourself too — but only once!) 💊`, action:t('night_protect'), bg:[C.bg,'#000810'] };
       case 'SEER': return { icon:te, title:`${tn}, wake up!`, script:`${tn}, open your eyes.\nWhich player's identity do you want to check?\n\nThe result will ONLY be shown to you — tell no one! 🤫`, action:t('night_check'), bg:[C.bg,'#0D001A'] };
+      case 'WITCH':   return {
+        icon:'🧪', title:'Witch, wake up!',
+        script:`Witch, open your eyes.\n${victim ? `Tonight they attacked ${victim.name}.` : 'No one was attacked tonight.'}\n\nSpend a potion — or keep them for a darker night.`,
+        // Every Witch choice is optional, so the Continue button is never gated on a pick.
+        action: witchPoisonUsed ? null : 'Poison someone (optional)', optional:true,
+        bg:[C.bg,'#12001A'],
+      };
       case 'DAWN':    return { icon:'🌅', title:t('night_dawn_title'),    script:t('night_dawn_script'),    action:null,                    bg:['#1A0D00','#100A00'] };
       default:        return { icon:'🌑', title:'', script:'', action:null, bg:[C.bg,C.bg] };
     }
   };
   const meta = getMetaForStep(step);
 
+  // Cupid needs exactly two; optional steps (the Witch) never block.
+  const blocked = step === 'CUPID' ? pair.length !== 2 : (!!meta.action && !meta.optional && !selected);
+
   // Speak the opening step on mount (native only — web browsers require a prior user gesture)
   useEffect(() => { speak(getMetaForStep(steps[0]).script); }, []);
 
   useEffect(() => {
-    fadeAnim.setValue(0); setSelected(null); setSeerResult(null);
+    if (stepIdx !== 0) return;
+    loadSettings().then(s => { if (!s?.narratorPromptSeen) setShowNarratorPrompt(true); });
+  }, []);
+
+  const chooseNarrator = async (enable) => {
+    haptics.light();
+    setEnabled(enable);
+    const s = (await loadSettings()) ?? {};
+    await saveSettings({ ...s, narratorEnabled: enable, narratorPromptSeen: true });
+    setShowNarratorPrompt(false);
+  };
+
+  useEffect(() => {
+    fadeAnim.setValue(0); setSelected(null); setPair([]); setLifePotion(false); setSeerResult(null);
     Animated.timing(fadeAnim,{toValue:1,duration:600,useNativeDriver:true}).start();
   }, [stepIdx]);
 
   useEffect(() => () => { stop(); }, []);
+
+  // Night/Day/Vote are a forward-only relay (see the "replace, not navigate" notes below)
+  // with no in-app back button — every round-trip screen replaces the last, so the stack
+  // entry underneath is always Setup. An unguarded hardware back press would silently
+  // dump the player on Setup mid-round with the game state abandoned. Swallow it instead.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => sub.remove();
+    }, [])
+  );
 
   const advance = () => {
     // replace (not navigate) — Night/Day/Vote cycle through the same route names every
@@ -74,10 +131,13 @@ export default function NightScreen({ navigation }) {
   };
 
   const handleNext = () => {
-    if(meta.action && !selected) return; // selection required; use Skip to bypass
+    if(blocked) return; // selection required; use Skip to bypass
     if(meta.action) haptics.light(); // confirming a night-action target selection
+    if(step==='CUPID'){ setCupidPair(pair); advance(); return; }
+    if(step==='WITCH'){ if(selected) setWitchPoison(selected); advance(); return; }
     if(step==='VILLAIN'&&selected) setVillainTarget(selected);
     else if(step==='HEALER'&&selected) setHealerProtect(selected);
+    else if(step==='BODYGUARD'&&selected) setBodyguardProtect(selected);
     else if(step==='SEER'&&selected) {
       setSeerCheck(selected);
       const target = players.find(p=>p.id===selected);
@@ -94,8 +154,16 @@ export default function NightScreen({ navigation }) {
 
   const selectable = alive.filter(p => {
     if(step==='SEER'){ const seer=players.find(q=>q.role==='SEER'); return seer?p.id!==seer.id:true; }
+    // A Bodyguard shields by dying in the target's place, so guarding themselves is a
+    // no-op — and repeating last night's target is against the rules.
+    if(step==='BODYGUARD'){ const bg=players.find(q=>q.role==='BODYGUARD'); return p.id!==bg?.id && p.id!==lastBodyguardTarget; }
     return true;
   });
+
+  const togglePair = (id) => {
+    setPair(prev => prev.includes(id) ? prev.filter(x=>x!==id) : prev.length < 2 ? [...prev, id] : prev);
+  };
+  const isPicked = (id) => step==='CUPID' ? pair.includes(id) : selected===id;
 
   return (
     <Gradient colors={meta.bg} style={styles.flex}>
@@ -114,6 +182,21 @@ export default function NightScreen({ navigation }) {
               ))}
             </View>
 
+            {showNarratorPrompt ? (
+              <View style={styles.body}>
+                <Text style={styles.stepIcon}>📢</Text>
+                <Text style={[styles.stepTitle,{color:C.text}]}>{t('night_narrator_prompt_title')}</Text>
+                <View style={[styles.narratorBox,{backgroundColor:C.primary+'15',borderColor:C.primary+'40'}]}>
+                  <Text style={[styles.narratorText,{color:C.text}]}>{t('night_narrator_prompt_body')}</Text>
+                </View>
+                <Pressable style={[styles.nextBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>chooseNarrator(true)}>
+                  <Text style={styles.nextBtnTxt}>{t('night_narrator_prompt_yes')}</Text>
+                </Pressable>
+                <Pressable style={styles.skipBtn} onPress={()=>chooseNarrator(false)}>
+                  <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('night_narrator_prompt_no')}</Text>
+                </Pressable>
+              </View>
+            ) : (
             <Animated.View style={[styles.body,{opacity:fadeAnim}]}>
               <Text style={styles.stepIcon}>{meta.icon}</Text>
               <Text style={[styles.stepTitle,{color:C.text}]}>{meta.title}</Text>
@@ -123,19 +206,56 @@ export default function NightScreen({ navigation }) {
                 <Text style={[styles.narratorText,{color:C.text}]}>{meta.script}</Text>
               </View>
 
+              {/* The couple learns who they are — without this the lovers' win is unplayable */}
+              {step==='LOVERS'&&loverPair&&(
+                <View style={[styles.loversBox,{borderColor:ROLES.CUPID.color,backgroundColor:ROLES.CUPID.color+'1A'}]}>
+                  <Text style={styles.loversEmoji}>💞</Text>
+                  {loverPair.map(p=>(
+                    <Text key={p.id} style={[styles.loverName,{color:C.text}]}>{p.avatar} {p.name}</Text>
+                  ))}
+                  <Text style={[styles.loversNote,{color:C.textSecondary}]}>
+                    You are in love. If either of you dies, the other dies of grief.{'\n\n'}
+                    If you turn out to be on opposite sides, you can no longer win with your own team —
+                    you win only by being the last two alive, together.
+                  </Text>
+                </View>
+              )}
+
+              {/* Witch life potion — a one-shot toggle, separate from the poison grid below */}
+              {step==='WITCH'&&!witchHealUsed&&!!victim&&(
+                <Pressable
+                  style={[styles.potionBtn,{borderColor:C.village||'#27AE60',backgroundColor:(lifePotion?(C.village||'#27AE60'):'transparent')+(lifePotion?'33':'')}]}
+                  onPress={()=>{ const next=!lifePotion; setLifePotion(next); setWitchSave(next); haptics.light(); }}>
+                  <Text style={[styles.potionTxt,{color:C.village||'#27AE60'}]}>
+                    {lifePotion ? `✅ Saving ${victim.name} with the life potion` : `🧪 Use life potion to save ${victim.name}`}
+                  </Text>
+                </Pressable>
+              )}
+              {step==='WITCH'&&witchHealUsed&&(
+                <Text style={[styles.potionSpent,{color:C.textDim}]}>🧪 Life potion already spent</Text>
+              )}
+              {step==='WITCH'&&witchPoisonUsed&&(
+                <Text style={[styles.potionSpent,{color:C.textDim}]}>☠️ Death potion already spent</Text>
+              )}
+
               {meta.action&&(
                 <View style={styles.selectionArea}>
-                  <Text style={[styles.selectionTitle,{color:C.text}]}>{meta.action}:</Text>
+                  <Text style={[styles.selectionTitle,{color:C.text}]}>
+                    {meta.action}{step==='CUPID' ? ` (${pair.length}/2)` : ''}:
+                  </Text>
                   <View style={styles.playerGrid}>
-                    {selectable.map(p=>(
-                      <Pressable key={p.id}
-                        style={[styles.playerChip,{backgroundColor:C.card,borderColor:selected===p.id?C.primary:C.cardBorder},selected===p.id&&{backgroundColor:C.primary+'20'}]}
-                        onPress={()=>setSelected(p.id)}>
-                        <Text style={styles.chipAvatar}>{p.avatar}</Text>
-                        <Text style={[styles.chipName,{color:selected===p.id?C.primary:C.textSecondary}]}>{p.name}</Text>
-                        {selected===p.id&&<Text style={[styles.check,{color:C.primary}]}>✓</Text>}
-                      </Pressable>
-                    ))}
+                    {selectable.map(p=>{
+                      const picked = isPicked(p.id);
+                      return (
+                        <Pressable key={p.id}
+                          style={[styles.playerChip,{backgroundColor:C.card,borderColor:picked?C.primary:C.cardBorder},picked&&{backgroundColor:C.primary+'20'}]}
+                          onPress={()=>step==='CUPID'?togglePair(p.id):setSelected(selected===p.id?null:p.id)}>
+                          <Text style={styles.chipAvatar}>{p.avatar}</Text>
+                          <Text style={[styles.chipName,{color:picked?C.primary:C.textSecondary}]}>{p.name}</Text>
+                          {picked&&<Text style={[styles.check,{color:C.primary}]}>✓</Text>}
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 </View>
               )}
@@ -151,7 +271,7 @@ export default function NightScreen({ navigation }) {
 
               {!seerResult&&(
                 <Pressable
-                  style={[styles.nextBtn,{backgroundColor:(meta.action&&!selected)?C.textDim:C.primary,shadowColor:C.primary}]}
+                  style={[styles.nextBtn,{backgroundColor:blocked?C.textDim:C.primary,shadowColor:C.primary}]}
                   onPress={handleNext}>
                   <Text style={styles.nextBtnTxt}>
                     {stepIdx===steps.length-1 ? t('night_dawn_btn') : t('night_continue')}
@@ -160,11 +280,12 @@ export default function NightScreen({ navigation }) {
               )}
 
               {meta.action&&!seerResult&&(
-                <Pressable style={styles.skipBtn} onPress={()=>{setSelected(null);advance();}}>
+                <Pressable style={styles.skipBtn} onPress={()=>{setSelected(null);setPair([]);advance();}}>
                   <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('night_skip')}</Text>
                 </Pressable>
               )}
             </Animated.View>
+            )}
           </ScrollView>
         </TabletContainer>
       </SafeAreaView>
@@ -200,4 +321,11 @@ const styles = StyleSheet.create({
   nextBtnTxt:{color:'#000',fontWeight:'800',fontSize:17},
   skipBtn:{paddingVertical:10},
   skipTxt:{...FONTS.small,textAlign:'center'},
+  potionBtn:{width:'100%',maxWidth:380,borderRadius:14,paddingVertical:14,paddingHorizontal:16,borderWidth:1.5,marginBottom:16,alignItems:'center'},
+  potionTxt:{...FONTS.body,fontWeight:'700',textAlign:'center'},
+  potionSpent:{...FONTS.small,textAlign:'center',marginBottom:12,fontStyle:'italic'},
+  loversBox:{width:'100%',maxWidth:380,borderRadius:20,padding:24,borderWidth:2,alignItems:'center',marginBottom:24},
+  loversEmoji:{fontSize:52,marginBottom:10},
+  loverName:{fontSize:20,fontWeight:'800',marginBottom:4},
+  loversNote:{...FONTS.small,textAlign:'center',lineHeight:20,marginTop:12},
 });

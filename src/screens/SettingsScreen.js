@@ -16,8 +16,24 @@ import { loadSettings, saveSettings } from '../storage';
 import { logScreenView, logSettingsChanged } from '../utils/analytics';
 import { openSupportLink } from '../utils/supportLink';
 import { setHapticsEnabledCache } from '../utils/haptics';
+import { NARRATOR_DEFAULTS } from '../hooks/useSpeech';
+
+let Speech = null;
+try { Speech = require('expo-speech'); } catch (_) {}
 
 const PRIVACY_URL = 'https://www.dreamcrafterinnovations.com/privacy-policy';
+
+// Discussion timer choices, in seconds. 0 = no timer (the original behaviour).
+const TIMER_OPTIONS = [
+  { secs: 0,   label: 'Off' },
+  { secs: 60,  label: '1 min' },
+  { secs: 120, label: '2 min' },
+  { secs: 180, label: '3 min' },
+  { secs: 300, label: '5 min' },
+];
+
+const RATE_OPTIONS  = [{ v: 0.7, label: 'Slow' }, { v: 0.85, label: 'Normal' }, { v: 1.0, label: 'Fast' }];
+const PITCH_OPTIONS = [{ v: 0.7, label: 'Deep' }, { v: 0.9, label: 'Mid' },    { v: 1.1, label: 'High' }];
 
 export default function SettingsScreen({ navigation }) {
   const C = usePalette();
@@ -25,7 +41,10 @@ export default function SettingsScreen({ navigation }) {
   const isTablet   = width >= 768;
 
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
-  const [narratorEnabled, setNarratorEnabled] = useState(false);
+  const [narratorEnabled, setNarratorEnabled] = useState(true); // default on — see useSpeech
+  const [narratorRate, setNarratorRate]   = useState(NARRATOR_DEFAULTS.rate);
+  const [narratorPitch, setNarratorPitch] = useState(NARRATOR_DEFAULTS.pitch);
+  const [dayTimerSeconds, setDayTimerSeconds] = useState(0);
 
   useEffect(() => {
     logScreenView('SettingsScreen');
@@ -39,9 +58,28 @@ export default function SettingsScreen({ navigation }) {
       loadSettings().then(s => {
         if (s?.hapticsEnabled !== undefined) setHapticsEnabled(s.hapticsEnabled);
         if (s?.narratorEnabled !== undefined) setNarratorEnabled(s.narratorEnabled);
+        if (s?.narratorRate !== undefined) setNarratorRate(s.narratorRate);
+        if (s?.narratorPitch !== undefined) setNarratorPitch(s.narratorPitch);
+        if (s?.dayTimerSeconds !== undefined) setDayTimerSeconds(s.dayTimerSeconds);
       });
     }, [])
   );
+
+  // One writer for every simple settings key — each toggle below was otherwise
+  // repeating the same load/merge/save/log dance.
+  async function persist(key, value, setter) {
+    setter(value);
+    const s = (await loadSettings()) ?? {};
+    await saveSettings({ ...s, [key]: value });
+    logSettingsChanged(key, s[key], value);
+  }
+
+  function previewVoice(rate = narratorRate, pitch = narratorPitch) {
+    try {
+      Speech?.stop?.();
+      Speech?.speak?.('The village sleeps. The evil ones awaken.', { rate, pitch });
+    } catch (_) {}
+  }
 
   async function toggleHaptics() {
     const next = !hapticsEnabled;
@@ -115,9 +153,76 @@ export default function SettingsScreen({ navigation }) {
               <View style={rowStyle}>
                 <View style={styles.rowTextWrap}>
                   <Text style={rowLabelStyle}>Voice Narration</Text>
-                  <Text style={[styles.rowSub, rowSubStyle]}>Reads night-phase prompts aloud</Text>
+                  <Text style={[styles.rowSub, rowSubStyle]}>Reads night and morning prompts aloud</Text>
                 </View>
                 <Toggle value={narratorEnabled} onToggle={toggleNarrator} activeColor={C.primary} />
+              </View>
+
+              {narratorEnabled && (
+                <>
+                  <View style={divStyle} />
+                  <View style={styles.stackRow}>
+                    <Text style={[rowLabelStyle, styles.stackLabel]}>Narrator Speed</Text>
+                    <View style={styles.segRow}>
+                      {RATE_OPTIONS.map(o => {
+                        const on = Math.abs(narratorRate - o.v) < 0.01;
+                        return (
+                          <Pressable key={o.label}
+                            style={[styles.seg, { borderColor: on ? C.primary : C.cardBorder, backgroundColor: on ? C.primary + '22' : 'transparent' }]}
+                            onPress={() => { persist('narratorRate', o.v, setNarratorRate); previewVoice(o.v, narratorPitch); }}>
+                            <Text style={[styles.segTxt, { color: on ? C.primary : C.textSecondary }]}>{o.label}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                  <View style={divStyle} />
+                  <View style={styles.stackRow}>
+                    <Text style={[rowLabelStyle, styles.stackLabel]}>Narrator Voice</Text>
+                    <View style={styles.segRow}>
+                      {PITCH_OPTIONS.map(o => {
+                        const on = Math.abs(narratorPitch - o.v) < 0.01;
+                        return (
+                          <Pressable key={o.label}
+                            style={[styles.seg, { borderColor: on ? C.primary : C.cardBorder, backgroundColor: on ? C.primary + '22' : 'transparent' }]}
+                            onPress={() => { persist('narratorPitch', o.v, setNarratorPitch); previewVoice(narratorRate, o.v); }}>
+                            <Text style={[styles.segTxt, { color: on ? C.primary : C.textSecondary }]}>{o.label}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                  <View style={divStyle} />
+                  <Pressable style={rowStyle} onPress={() => previewVoice()}>
+                    <View style={styles.rowTextWrap}>
+                      <Text style={[rowLabelStyle, { color: C.primary, fontWeight: '700' }]}>▶ Test the narrator</Text>
+                      <Text style={[styles.rowSub, rowSubStyle]}>Hear the current speed and voice</Text>
+                    </View>
+                  </Pressable>
+                </>
+              )}
+            </View>
+
+            {/* ── GAMEPLAY ──────────────────────────────────────── */}
+            <SectionLabel style={[styles.sectionGap, { color: C.primary }]}>Gameplay</SectionLabel>
+            <View style={[styles.card, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
+              <View style={styles.stackRow}>
+                <Text style={[rowLabelStyle, styles.stackLabel]}>Discussion Timer</Text>
+                <Text style={[styles.rowSub, rowSubStyle, { marginBottom: 10 }]}>
+                  Countdown on the day screen before voting
+                </Text>
+                <View style={styles.segRow}>
+                  {TIMER_OPTIONS.map(o => {
+                    const on = dayTimerSeconds === o.secs;
+                    return (
+                      <Pressable key={o.label}
+                        style={[styles.seg, { borderColor: on ? C.primary : C.cardBorder, backgroundColor: on ? C.primary + '22' : 'transparent' }]}
+                        onPress={() => persist('dayTimerSeconds', o.secs, setDayTimerSeconds)}>
+                        <Text style={[styles.segTxt, { color: on ? C.primary : C.textSecondary }]}>{o.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
             </View>
 
@@ -192,6 +297,11 @@ const styles = StyleSheet.create({
   row:             { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   rowTextWrap:     { flex: 1 },
   rowSub:          { fontSize: 12, marginTop: 2 },
+  stackRow:        { paddingHorizontal: 16, paddingVertical: 14 },
+  stackLabel:      { marginBottom: 2 },
+  segRow:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  seg:             { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  segTxt:          { fontSize: 13, fontWeight: '700' },
   divider:         { height: 1, marginHorizontal: 16 },
   // Ko-fi
   kofiRow:         { borderWidth: 1, borderRadius: 0, marginHorizontal: 0 },
