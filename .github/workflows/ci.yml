@@ -1,0 +1,152 @@
+name: Nightfall (Werewolf) — CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      trigger_eas_build:
+        description: "Trigger EAS build (counts against monthly quota)"
+        required: false
+        default: false
+        type: boolean
+      build_profile:
+        description: "EAS build profile"
+        required: false
+        default: "preview"
+        type: choice
+        options: [development, preview, production]
+
+env:
+  NODE_VERSION: "20"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Resolve Gitleaks base ref
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          BASE_REF="${{ github.event.before }}"
+          if [ -n "$BASE_REF" ] && git rev-parse --verify --quiet "$BASE_REF^{commit}" >/dev/null; then
+            echo "BASE_REF=$BASE_REF" >> "$GITHUB_ENV"
+          else
+            echo "BASE_REF=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Gitleaks — secret scan
+        uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          BASE_REF: ${{ env.BASE_REF }}
+
+      - name: npm audit
+        working-directory: .
+        run: npm audit --audit-level=high --omit=dev
+
+
+  test:
+    name: Tests, Lint & Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Jest — unit tests with coverage
+        working-directory: .
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: ./coverage/
+          retention-days: 14
+
+      - name: Semgrep CE
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/react
+            p/javascript
+            p/secrets
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        continue-on-error: true
+
+  eas-build:
+    name: EAS Build (${{ github.event.inputs.build_profile || 'preview' }})
+    runs-on: ubuntu-latest
+    needs: [security, test]
+    permissions:
+      contents: read
+    # Manual only — counts against EAS monthly build quota, never auto-triggered.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.trigger_eas_build == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: EAS Build
+        working-directory: .
+        continue-on-error: true
+        run: |
+          PROFILE="${{ github.event.inputs.build_profile || 'preview' }}"
+          eas build --platform android --profile "$PROFILE" --non-interactive --no-wait
+
