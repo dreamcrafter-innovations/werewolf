@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
 import { fill } from '../utils/interpolate';
 import Gradient from '../components/Gradient';
+import AbandonGameButton from '../components/AbandonGameButton';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
 import { ROLES } from '../data/roles';
@@ -149,6 +150,7 @@ export default function DayScreen({ navigation }) {
         active
       />
       <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
         <TabletContainer>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 

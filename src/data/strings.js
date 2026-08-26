@@ -10,6 +10,7 @@ export const STRINGS = {
     over_village_title:'Village Wins! 🎉', over_village_sub:'All evil ones defeated!', over_village_body:"The villagers' bravery and sharp minds drove out the evil. Light your lanterns — the village is safe! 🪔✨", over_nights:'Nights', over_players:'Players', over_eliminated:'Eliminated', over_evil_section:'Who were the {villain}s?', over_special:'🎭 Special Roles', over_all:'📋 All Players', over_play_again:'🔄  Play Again!', over_home:'🏚️  Home',
     setup_rosters_btn:'📂 Rosters', roster_title:'Saved Rosters', roster_empty:'No rosters saved yet.\nCreate your first roster!', roster_new:'+ New Roster', roster_load:'Load', roster_edit:'Edit', roster_delete:'Delete Roster', roster_delete_title:'Delete Roster?', roster_delete_confirm:'This cannot be undone.', roster_players:'{count} players', roster_too_few:'Roster needs at least 4 players.', roster_name_required:'Please enter a roster name.',
     edit_group_title_new:'New Roster', edit_group_title_edit:'Edit Roster', edit_group_name_placeholder:'Roster name (e.g. Friday Night)', edit_group_add_player:'+ Add Player', edit_group_save:'✓  Save Roster', edit_player_title:'Player', edit_player_name_placeholder:'Player name', edit_player_done:'Done', cancel:'Cancel', delete:'Delete',
+    abandon_title:'Abandon this game?', abandon_body:'This ends the round for everyone and returns to Setup. This cannot be undone.', abandon_confirm:'Abandon Game', abandon_label:'Abandon game',
   },
 };
  

@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
 import { fill } from '../utils/interpolate';
 import Gradient from '../components/Gradient';
+import AbandonGameButton from '../components/AbandonGameButton';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
 import { getRandomProphecy, ROLES } from '../data/roles';
@@ -177,6 +178,7 @@ export default function NightScreen({ navigation }) {
   return (
     <Gradient colors={meta.bg} style={styles.flex}>
       <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
         <TabletContainer>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 

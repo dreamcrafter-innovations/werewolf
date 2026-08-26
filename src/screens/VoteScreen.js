@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
 import { fill } from '../utils/interpolate';
 import Gradient from '../components/Gradient';
+import AbandonGameButton from '../components/AbandonGameButton';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
 import { ROLES } from '../data/roles';
@@ -93,6 +94,7 @@ export default function VoteScreen({ navigation }) {
     return (
       <Gradient colors={['#1A0800','#0D0400']} style={styles.flex}>
         <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
           <TabletContainer>
             <ScrollView contentContainerStyle={styles.scroll}>
               <Text style={styles.bigIcon}>🏹</Text>
@@ -129,6 +131,7 @@ export default function VoteScreen({ navigation }) {
     return (
       <Gradient colors={['#0A0500','#180A00']} style={styles.flex}>
         <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
           <TabletContainer>
             <ScrollView contentContainerStyle={styles.scroll}>
               <Text style={styles.bigIcon}>🗳️</Text>
@@ -190,6 +193,7 @@ export default function VoteScreen({ navigation }) {
   return (
     <Gradient colors={['#0A0500','#160B00','#1E1200']} style={styles.flex}>
       <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
         <TabletContainer>
           <ScrollView contentContainerStyle={styles.scroll}>
             <Text style={styles.bigIcon}>🗳️</Text>
