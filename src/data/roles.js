@@ -197,13 +197,18 @@ export function countCustomRoles(customRoles) {
 }
 
 /**
- * A loadout is playable when it fits inside the table and fields at least one evil —
- * a zero-evil game is an instant, unwinnable village victory.
+ * A loadout is playable when it fits inside the table, fields at least one evil —
+ * a zero-evil game is an instant, unwinnable village victory — and leaves the village
+ * outnumbering the evils. checkWinCondition() hands the game to evil the moment
+ * evil >= village, so a loadout at or past parity is decided before anyone has played
+ * a turn. The auto-scaled table already caps evils at a third of the players; a
+ * hand-dealt one has to be held to the same floor.
  */
 export function isCustomLoadoutValid(playerCount, customRoles) {
   if (!customRoles) return true;
   const total = countCustomRoles(customRoles);
-  return total <= playerCount && (customRoles.VILLAIN | 0) >= 1;
+  const evil = customRoles.VILLAIN | 0;
+  return total <= playerCount && evil >= 1 && evil < playerCount - evil;
 }
 
 function buildCustomRoles(playerCount, customRoles) {

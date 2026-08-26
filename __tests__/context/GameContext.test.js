@@ -432,3 +432,49 @@ describe('reducer default case', () => {
     expect(next).toBe(state);
   });
 });
+
+// ─── RESOLVE_NIGHT single-use / lapsing rules ────────────────────────────────
+
+describe('RESOLVE_NIGHT protection bookkeeping', () => {
+  // Healer, Villager, Villager, Bodyguard — Healer is player "1".
+  const table = () => makePlayers(4, ['HEALER', 'VILLAGER', 'VILLAGER', 'BODYGUARD']);
+
+  const nightState = (nightActions, extra = {}) => ({
+    ...initialState,
+    players: table(),
+    phase: 'NIGHT',
+    round: 1,
+    nightActions: { ...initialState.nightActions, ...nightActions },
+    ...extra,
+  });
+
+  test('healerSelfUsed is burned when the Healer protects themselves', () => {
+    const next = reducer(nightState({ healerProtect: '1' }), { type: 'RESOLVE_NIGHT' });
+    expect(next.healerSelfUsed).toBe(true);
+  });
+
+  test('healerSelfUsed stays false when the Healer protects someone else', () => {
+    const next = reducer(nightState({ healerProtect: '2' }), { type: 'RESOLVE_NIGHT' });
+    expect(next.healerSelfUsed).toBe(false);
+  });
+
+  test('healerSelfUsed stays false when the Healer step is skipped', () => {
+    const next = reducer(nightState({}), { type: 'RESOLVE_NIGHT' });
+    expect(next.healerSelfUsed).toBe(false);
+  });
+
+  test('healerSelfUsed is never un-burned by a later night', () => {
+    const next = reducer(nightState({ healerProtect: '2' }, { healerSelfUsed: true }), { type: 'RESOLVE_NIGHT' });
+    expect(next.healerSelfUsed).toBe(true);
+  });
+
+  test('lastBodyguardTarget records the night’s pick', () => {
+    const next = reducer(nightState({ bodyguardProtect: '2' }), { type: 'RESOLVE_NIGHT' });
+    expect(next.lastBodyguardTarget).toBe('2');
+  });
+
+  test('lastBodyguardTarget lapses after a night with no pick, so the ban is not permanent', () => {
+    const next = reducer(nightState({}, { lastBodyguardTarget: '2' }), { type: 'RESOLVE_NIGHT' });
+    expect(next.lastBodyguardTarget).toBeNull();
+  });
+});

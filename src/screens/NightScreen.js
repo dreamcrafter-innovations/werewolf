@@ -23,7 +23,7 @@ export default function NightScreen({ navigation }) {
           setWitchSave, setWitchPoison, setCupidPair, setSeerCheck, resolveNight } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
-  const { players, round, witchHealUsed, witchPoisonUsed, cupidDone, lastBodyguardTarget } = state;
+  const { players, round, witchHealUsed, witchPoisonUsed, cupidDone, lastBodyguardTarget, healerSelfUsed } = state;
   const alive = players.filter(p=>p.isAlive);
   const aliveVillains = alive.filter(p=>p.role==='VILLAIN');
   // Mixed-villain mode: alive villains may carry different theme overrides —
@@ -42,6 +42,10 @@ export default function NightScreen({ navigation }) {
   const [seerResultTheme, setSeerResultTheme] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const prophecy = useRef(getRandomProphecy()).current;
+  // The 3s seer-result timer calls advance(); if the screen goes away first
+  // (app killed mid-window) it would fire against an unmounted component.
+  const seerTimer = useRef(null);
+  useEffect(() => () => { if (seerTimer.current) clearTimeout(seerTimer.current); }, []);
   const step = steps[stepIdx];
   const { speak, stop, setEnabled } = useSpeech();
   // Shown once ever, on the very first Night screen — narration defaults on (useSpeech),
@@ -66,7 +70,9 @@ export default function NightScreen({ navigation }) {
         : { icon:'🌙', title:'No one was bound', script:'Cupid bound no one tonight. Everyone stays asleep.', action:null, bg:[C.bg,'#1A0010'] };
       case 'VILLAIN':  return { icon:activeVillainTheme.emoji, title:activeVillainTheme.nightWake, script:activeVillainTheme.nightInstruction, action:t('night_choose_target'), bg:[activeVillainTheme.bgColor||C.bg,'#050000'] };
       case 'BODYGUARD': return { icon:'🛡️', title:'Bodyguard, wake up!', script:`Bodyguard, open your eyes.\nWho do you want to guard tonight?\n\nIf they are attacked, YOU die in their place.${lastBodyguardTarget ? '\n\n(You cannot guard the same player two nights in a row.)' : ''}`, action:'Guard someone', bg:[C.bg,'#00101A'] };
-      case 'HEALER':  return { icon:ve, title:`${vn}, wake up!`, script:`${vn}, open your eyes.\nWhich player do you want to protect tonight?\n\n(You can protect yourself too — but only once!) 💊`, action:t('night_protect'), bg:[C.bg,'#000810'] };
+      // The self-protect line is now backed by healerSelfUsed, so it has to stop
+      // offering something the selectable filter no longer allows.
+      case 'HEALER':  return { icon:ve, title:`${vn}, wake up!`, script:`${vn}, open your eyes.\nWhich player do you want to protect tonight?\n\n${healerSelfUsed ? '(You have already used your one self-protection.) 💊' : '(You can protect yourself too — but only once!) 💊'}`, action:t('night_protect'), bg:[C.bg,'#000810'] };
       case 'SEER': return { icon:te, title:`${tn}, wake up!`, script:`${tn}, open your eyes.\nWhich player's identity do you want to check?\n\nThe result will ONLY be shown to you — tell no one! 🤫`, action:t('night_check'), bg:[C.bg,'#0D001A'] };
       case 'WITCH':   return {
         icon:'🧪', title:'Witch, wake up!',
@@ -146,7 +152,7 @@ export default function NightScreen({ navigation }) {
       // Show the target's own villain theme (mixed-villain mode), not the aggregate one
       setSeerResultTheme(isEvil ? getTheme(target.villainThemeOverride || state.villainThemeId) : null);
       (isEvil ? haptics.warning : haptics.success)();
-      setTimeout(()=>{ setSeerResult(null); setSeerResultTheme(null); advance(); }, 3000);
+      seerTimer.current = setTimeout(()=>{ setSeerResult(null); setSeerResultTheme(null); advance(); }, 3000);
       return;
     }
     advance();
@@ -157,6 +163,9 @@ export default function NightScreen({ navigation }) {
     // A Bodyguard shields by dying in the target's place, so guarding themselves is a
     // no-op — and repeating last night's target is against the rules.
     if(step==='BODYGUARD'){ const bg=players.find(q=>q.role==='BODYGUARD'); return p.id!==bg?.id && p.id!==lastBodyguardTarget; }
+    // Self-protection is once per game. Nothing enforced it before, so a Healer
+    // could shield themselves every single night while the script said otherwise.
+    if(step==='HEALER'&&healerSelfUsed){ const h=players.find(q=>q.role==='HEALER'); return p.id!==h?.id; }
     return true;
   });
 
@@ -279,8 +288,12 @@ export default function NightScreen({ navigation }) {
                 </Pressable>
               )}
 
+              {/* Skip abandons the whole turn, so it has to undo the Witch's life potion
+                  too — that one lives in game state (setWitchSave), not in the local
+                  `lifePotion` flag the step-change effect resets, so without this a
+                  narrator who toggled it and then skipped still spent the potion. */}
               {meta.action&&!seerResult&&(
-                <Pressable style={styles.skipBtn} onPress={()=>{setSelected(null);setPair([]);advance();}}>
+                <Pressable style={styles.skipBtn} onPress={()=>{setSelected(null);setPair([]);if(step==='WITCH'){setLifePotion(false);setWitchSave(false);}advance();}}>
                   <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('night_skip')}</Text>
                 </Pressable>
               )}

@@ -211,7 +211,11 @@ export default function VoteScreen({ navigation }) {
 
             <Text style={[styles.progressTxt,{color:C.textSecondary}]}>{fill(t('vote_progress'),{n:voterIdx+1,total:voters.length})}</Text>
             <View style={[styles.progressBar,{backgroundColor:C.cardBorder}]}>
-              <View style={[styles.progressFill,{width:`${(voterIdx/voters.length)*100}%`,backgroundColor:C.primary}]}/>
+              {/* (voterIdx+1) so the bar reaches 100% on the last voter, matching the
+                  "{voterIdx+1}/{voters.length} voted" label above it — it was previously
+                  always one voter short (e.g. 0% while the first of five is voting, 80%
+                  on the last). Same fix as the RoleReveal progress bar. */}
+              <View style={[styles.progressFill,{width:`${((voterIdx+1)/voters.length)*100}%`,backgroundColor:C.primary}]}/>
             </View>
 
             <Text style={[styles.promptTxt,{color:C.text}]}>{fill(t('vote_prompt'),{name:voter?.name})}</Text>

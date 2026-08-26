@@ -108,7 +108,7 @@ export default function SetupScreen({ navigation }) {
   }
 
   function loadGroupIntoSetup(group) {
-    if (group.players.length < 2) { Alert.alert('', t('roster_too_few')); return; }
+    if (group.players.length < 4) { Alert.alert('', t('roster_too_few')); return; }
     setPlayers(group.players.map(p => ({ id: p.id, name: p.name, avatar: getAvatarEmoji(p.avatarId) })));
     setView('setup');
   }
@@ -211,7 +211,7 @@ export default function SetupScreen({ navigation }) {
                 </Text>
               </Pressable>
 
-              {showPreview && (
+              {(showPreview || !loadoutOk) && (
                 <View style={[s.previewBox, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
                   {/* Auto = the built-in distribution table. Custom = deal the deck yourself. */}
                   <View style={s.modeRow}>
@@ -274,7 +274,9 @@ export default function SetupScreen({ navigation }) {
                           <Text style={[s.loadoutWarn, { color: C.danger }]}>
                             {(custom.VILLAIN | 0) < 1
                               ? '⚠️ Add at least one evil role — the village would win instantly.'
-                              : '⚠️ Too many roles for this many players. Remove some or add players.'}
+                              : specialUsed > players.length
+                                ? '⚠️ Too many roles for this many players. Remove some or add players.'
+                                : '⚠️ Too many evil roles — evil already matches or outnumbers the village, so the game would be decided on the first night. Remove some or add players.'}
                           </Text>
                         )}
                       </View>
@@ -316,7 +318,18 @@ export default function SetupScreen({ navigation }) {
               )}
 
               <Pressable style={[s.startBtn, { backgroundColor: canStart ? C.primary : C.textDim, shadowColor: C.primary }]} onPress={handleStart}>
-                <Text style={s.startTxt}>{canStart ? t('setup_start_btn') : t('setup_start_disabled')}</Text>
+                {/* '(Fill in all names)' was shown for every blocker, including
+                    "only 2 players" and an invalid custom loadout — neither of which
+                    a name tells you how to fix. Name the actual blocker instead. */}
+                <Text style={s.startTxt}>
+                  {canStart
+                    ? t('setup_start_btn')
+                    : players.length < 4
+                      ? '(Add at least 4 players)'
+                      : !loadoutOk
+                        ? '(Fix the role loadout above)'
+                        : t('setup_start_disabled')}
+                </Text>
               </Pressable>
 
               <Text style={[s.note, { color: C.textDim }]}>{t('setup_note')}</Text>

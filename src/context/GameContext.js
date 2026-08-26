@@ -28,6 +28,9 @@ export const initialState = {
   // Witch potions and Cupid's binding are once-per-GAME, so they live outside nightActions
   // (which is wiped every night).
   witchHealUsed: false,
+  // The Healer may shield themselves once per game — promised by the role text
+  // and the narrator script, so it has to be tracked like the witch's potions.
+  healerSelfUsed: false,
   witchPoisonUsed: false,
   cupidDone: false,
   lastBodyguardTarget: null,
@@ -152,7 +155,12 @@ export function reducer(state, action) {
         // Potions are single-use for the whole game, so burn them the moment they resolve.
         witchHealUsed:   state.witchHealUsed   || !!witchSave,
         witchPoisonUsed: state.witchPoisonUsed || !!witchPoison,
-        lastBodyguardTarget: bodyguardProtect ?? state.lastBodyguardTarget,
+        healerSelfUsed:  state.healerSelfUsed
+          || (!!healerProtect && healerProtect === state.players.find(p => p.role === 'HEALER')?.id),
+        // The rule is "not the same target two nights running", so a night the
+        // Bodyguard sat out ends the run. Carrying the old target forward left it
+        // unselectable for the rest of the game.
+        lastBodyguardTarget: bodyguardProtect ?? null,
         log: [...state.log, ...lines.map(text => ({ round: state.round, phase: 'NIGHT', text }))],
         phase: winner ? 'GAME_OVER' : 'DAY',
         winner,

@@ -1,6 +1,7 @@
-﻿import React, { useState, useRef } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
+﻿import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, Pressable, Animated, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
@@ -49,6 +50,20 @@ export default function RoleRevealScreen({ navigation }) {
   const EVIL_ROLES = ['VILLAIN', 'DON'];
   const evilAllies = (EVIL_ROLES.includes(baseRole?.id) && knowsAllies)
     ? players.filter(p=>EVIL_ROLES.includes(p.role)&&p.id!==currentPlayer.id) : [];
+
+  // Roles are already dealt by the time this screen mounts. A hardware back press pops
+  // straight to Setup, and the only way forward from there is Start Game — which
+  // reshuffles every role, so whoever had already looked at their card is now holding
+  // the wrong one with no way to find out. Swallow back once a card has been turned
+  // over; before that, going back to fix a name is still harmless and still works.
+  const revealStarted = revealed || idx > 0;
+  useFocusEffect(
+    useCallback(() => {
+      if (!revealStarted) return undefined;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => sub.remove();
+    }, [revealStarted])
+  );
 
   const revealCard = () => {
     haptics.medium();

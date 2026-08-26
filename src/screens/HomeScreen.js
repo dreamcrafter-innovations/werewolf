@@ -15,7 +15,7 @@ import { loadSettings, saveSettings, makeId } from '../storage';
 import { FALLBACK_AVATARS } from './SetupScreen';
 
 export default function HomeScreen({ navigation }) {
-  const { resetGame, state, startGame, setVillainTheme, toggleThemeSelect, selectAllThemes, setKnowsAllies, setVillainCount, setAllowGhostVotes, villainTheme } = useGame();
+  const { resetGame, state, startGame, setVillainTheme, toggleThemeSelect, selectAllThemes, setKnowsAllies, setVillainCount, setAllowGhostVotes, setCustomRoles, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
   const moonPulse = useRef(new Animated.Value(1)).current;
@@ -66,6 +66,11 @@ export default function HomeScreen({ navigation }) {
   // stay editable in-game via nothing special, they just say "Player 1" etc.
   function quickStart() {
     resetGame(state.villainThemeId);
+    // A hand-dealt loadout from a previous Setup visit survives resetGame() and would
+    // silently be applied to these six players — dealing six special roles and no
+    // villagers, or dropping whichever roles ran past the sixth slot. Quick Start is
+    // documented as auto distribution, so clear it.
+    setCustomRoles(null);
     const players = FALLBACK_AVATARS.slice(0, 6).map((avatar, i) => ({
       id: makeId(), name: `Player ${i + 1}`, avatar,
     }));
@@ -236,7 +241,12 @@ export default function HomeScreen({ navigation }) {
               <View style={[styles.settingCard,{backgroundColor:C.card,borderColor:C.cardBorder}]}>
                 <Text style={[styles.settingCardTitle,{color:C.text}]}>🎭 Evil Players</Text>
                 <Text style={[styles.settingCardSub,{color:C.textSecondary}]}>
-                  {state.villainCount === 0 ? 'Auto — scales with count' : `${state.villainCount} evil player${state.villainCount > 1 ? 's' : ''}`}
+                  {/* getRoleAssignment caps evils at a third of the table, so this number
+                      is a ceiling, not a promise — set 3 and play 6 and you get 2. Say so
+                      rather than showing a count the game will quietly overrule. */}
+                  {state.villainCount === 0
+                    ? 'Auto — scales with count'
+                    : `Up to ${state.villainCount} evil player${state.villainCount > 1 ? 's' : ''} · max ⅓ of the table`}
                 </Text>
                 <View style={[styles.stepperRow,{marginTop:10}]}>
                   <Pressable
