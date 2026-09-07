@@ -3,7 +3,8 @@
 // friendly fallback instead of a white/blank screen, and reports the error
 // to Crashlytics (native prod builds only — recordError() no-ops on web).
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { recordError } from '../utils/analytics';
 import { COLORS, FONTS } from './theme';
 
