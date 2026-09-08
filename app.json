@@ -18,7 +18,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dreamcrafterinnovations.nightfall",
+      "bundleIdentifier": "com.dreamcrafters.nightfall",
       "buildNumber": "1"
     },
     "android": {
@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0B1E"
       },
-      "package": "com.dreamcrafterinnovations.nightfall",
+      "package": "com.dreamcrafters.nightfall",
       "googleServicesFile": "./google-services.json",
       "versionCode": 1
     },
