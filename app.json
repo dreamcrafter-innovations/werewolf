@@ -13,7 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B0B1E"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dreamcrafterinnovations.nightfall",
@@ -29,10 +31,15 @@
       "googleServicesFile": "./google-services.json",
       "versionCode": 1
     },
-    "web": { "bundler": "metro", "favicon": "./assets/favicon.png" },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics"
+      "@react-native-firebase/crashlytics",
+      "expo-sharing",
+      "expo-status-bar"
     ]
   }
 }
