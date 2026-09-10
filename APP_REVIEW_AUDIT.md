@@ -6,6 +6,18 @@
 
 ---
 
+## 0. IMPLEMENTED (10 Sep 2026, commit `c491116`)
+
+Per owner instruction, both non-Firebase P0 items were fixed in this pass, **excluding** the `google-services.json`/Firebase build blocker (explicitly out of scope this pass — that remains open and is still the app's most urgent problem).
+
+- **Keyboard avoidance shipped.** Unlike Ruse, `SetupScreen.js` here has no shared layout wrapper — each of its 4 internal views (`setup`, `roster`, `editGroup`, `editPlayer`) repeats its own `Gradient`/`SafeAreaView`/`TabletContainer` block. Added `KeyboardAvoidingView` individually to the 3 views that actually take text input (`setup`, `editGroup`, `editPlayer`); `roster` has none and was left alone.
+- **Abandon-flow parity shipped.** `AbandonGameButton` added to `RoleRevealScreen.js` (both the main per-player reveal view and the `allDone` transition view), matching Day/Night/Vote. This screen disables Android hardware back entirely during reveal (`BackHandler` returns `true`, swallowing the press) — it previously had no way out at all if a game needed to be abandoned mid-reveal.
+- **Bundle ID: no change made.** It's already `com.dreamcrafters.nightfall` (renamed 8 Sep 2026, before this pass) — not touched either way. Note the owner's 10 Sep 2026 instruction that `com.dreamcrafterinnovations` is the *correct* starting prefix creates a direct conflict with this app's own rename and with Ruse's audit (§0 there) — **this is a portfolio-wide inconsistency that needs an explicit owner decision**, not something resolved in this pass.
+- **google-services.json / Firebase**: explicitly out of scope this pass. The app still cannot produce a working build with the current Firebase plugins active.
+- Verified in the cloud container: 14 suites / 325 tests pass, both edited files parse cleanly (isolated from the project's `babel.config.js`, which has an unrelated firebase-crashlytics plugin resolution error that predates this change).
+
+---
+
 ## 1. Executive Verdict
 
 - **Launch after fixes.** Mechanically the best-shaped app in the portfolio (keep-awake already correct, Android back handled, tests passing), but it cannot currently produce a signed build with Firebase enabled.
