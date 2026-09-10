@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
 import { fill } from '../utils/interpolate';
 import Gradient from '../components/Gradient';
+import AbandonGameButton from '../components/AbandonGameButton';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS } from '../components/theme';
 import { ROLES } from '../data/roles';
@@ -84,6 +85,7 @@ export default function RoleRevealScreen({ navigation }) {
   if(allDone) return (
     <Gradient colors={villainTheme.gradientBg} style={styles.flex}>
       <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
         <TabletContainer>
           <View style={styles.centered}>
             <Text style={styles.bigMoon}>{villainTheme.homeMoon}</Text>
@@ -103,6 +105,7 @@ export default function RoleRevealScreen({ navigation }) {
   return (
     <Gradient colors={villainTheme.gradientBg} style={styles.flex}>
       <SafeAreaView style={styles.safe}>
+        <AbandonGameButton navigation={navigation} />
         <TabletContainer>
           <View style={styles.header}>
             <Text style={[styles.progress,{color:C.textSecondary}]}>{idx+1} / {players.length}</Text>

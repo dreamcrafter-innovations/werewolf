@@ -6,7 +6,7 @@
  *   'editPlayer' Name + avatar picker for one saved player
  */
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGame }     from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -175,6 +175,7 @@ export default function SetupScreen({ navigation }) {
     return (
       <Gradient colors={villainTheme.gradientBg} style={s.flex}>
         <SafeAreaView style={s.flex}>
+        <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <TabletContainer>
             <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
               <Pressable onPress={() => navigation.goBack()}>
@@ -335,6 +336,7 @@ export default function SetupScreen({ navigation }) {
               <Text style={[s.note, { color: C.textDim }]}>{t('setup_note')}</Text>
             </ScrollView>
           </TabletContainer>
+          </KeyboardAvoidingView>
 
           {/* Avatar picker overlay for setup-view players */}
           {avatarTarget !== null && (
@@ -421,6 +423,7 @@ export default function SetupScreen({ navigation }) {
     return (
       <Gradient colors={villainTheme.gradientBg} style={s.flex}>
         <SafeAreaView style={s.flex}>
+        <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <TabletContainer>
             <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
               <Pressable onPress={async () => {
@@ -474,6 +477,7 @@ export default function SetupScreen({ navigation }) {
               )}
             </ScrollView>
           </TabletContainer>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Gradient>
     );
@@ -484,6 +488,7 @@ export default function SetupScreen({ navigation }) {
   return (
     <Gradient colors={villainTheme.gradientBg} style={s.flex}>
       <SafeAreaView style={s.flex}>
+        <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <TabletContainer>
           <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
             <Pressable onPress={() => setView('editGroup')}>
@@ -538,6 +543,7 @@ export default function SetupScreen({ navigation }) {
             </Pressable>
           </ScrollView>
         </TabletContainer>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Gradient>
   );
