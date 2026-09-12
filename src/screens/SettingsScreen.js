@@ -21,7 +21,7 @@ import { NARRATOR_DEFAULTS } from '../hooks/useSpeech';
 let Speech = null;
 try { Speech = require('expo-speech'); } catch (_) {}
 
-const PRIVACY_URL = 'https://www.dreamcrafterinnovations.com/privacy-policy';
+const PRIVACY_URL = 'https://www.dreamcrafterinnovations.com/privacy-policy/nightfall/';
 
 // Discussion timer choices, in seconds. 0 = no timer (the original behaviour).
 const TIMER_OPTIONS = [
