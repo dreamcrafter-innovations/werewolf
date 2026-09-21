@@ -1,18 +1,15 @@
 module.exports = function (api) {
-  // Do NOT call api.cache() here — babel-preset-expo handles caching internally,
-  // and api.caller() already sets up its own invalidation.
-  // Calling api.cache(true/false) alongside api.caller() throws:
-  // "Caching has already been configured with .never or .forever()"
-
-  // Expo Metro passes caller.platform = 'web' | 'ios' | 'android'
-  const platform = api.caller((caller) => caller?.platform);
-  const isNative = platform !== 'web';
-
+  // Do NOT call api.cache(true/false) here — babel-preset-expo handles caching
+  // internally and configures it via api.caller().
+  //
+  // History: this file used to add '@react-native-firebase/crashlytics/babel-plugin'
+  // on native. That subpath was removed from @react-native-firebase/crashlytics
+  // (it is no longer in the package "exports"), and requiring it made Metro fail
+  // with ERR_PACKAGE_PATH_NOT_EXPORTED before a single module was bundled.
+  // Crashlytics still works without it: JS errors are reported through
+  // recordError() in src/utils/analytics.js.
+  api.cache.using(() => process.env.BABEL_ENV || process.env.NODE_ENV || '');
   return {
     presets: ['babel-preset-expo'],
-    plugins: [
-      // crashlytics/babel-plugin is not exported for web — skip it on web builds
-      ...(isNative ? ['@react-native-firebase/crashlytics/babel-plugin'] : []),
-    ],
   };
 };

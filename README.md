@@ -117,3 +117,21 @@ eas build --platform android
 ---
 
 *Built with ❤️ for Indian party game nights*
+
+## Firebase build config (Analytics + Crashlytics)
+
+`google-services.json` and `GoogleService-Info.plist` are git-ignored on purpose. `app.config.js` reads them from
+EAS **file** environment variables, falling back to the project root for local builds:
+
+| Platform | EAS file env var | Local fallback |
+|---|---|---|
+| Android | `GOOGLE_SERVICES_JSON` | `./google-services.json` |
+| iOS | `GOOGLE_SERVICE_INFO_PLIST` | `./GoogleService-Info.plist` |
+
+Create them once with `eas env:create` (type: file), or supply the files locally. A `production` EAS build with neither
+platform's file fails immediately with an explanatory error; development/preview builds proceed without Firebase and the
+app simply reports nothing (every call in `src/utils/analytics.js` is guarded). The Firebase app IDs must match
+`com.dreamcrafterinnovations.nightfall`.
+
+`babel.config.js` must not reference `@react-native-firebase/crashlytics/babel-plugin` — that subpath no longer exists in
+v26 and makes Metro fail before bundling.
