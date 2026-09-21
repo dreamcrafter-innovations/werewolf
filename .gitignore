@@ -1,5 +1,9 @@
 # ─── Node ──────────────────────────────────────────────────────────────────────
 node_modules/
+
+# local excluded work
+_stage/
+_to_delete/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -69,3 +73,7 @@ coverage/
 .turbo/
 
 .cache/
+
+# local excluded work
+_stage/
+_to_delete/
