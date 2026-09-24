@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Pressable, Animated, StyleSheet, BackHandler, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
@@ -87,7 +87,7 @@ export default function RoleRevealScreen({ navigation }) {
       <SafeAreaView style={styles.safe}>
         <AbandonGameButton navigation={navigation} />
         <TabletContainer>
-          <View style={styles.centered}>
+          <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.centered} showsVerticalScrollIndicator={false}>
             <Text style={styles.bigMoon}>{villainTheme.homeMoon}</Text>
             <Text style={[styles.doneTitle,{color:C.text}]}>{t('reveal_all_done_title')}</Text>
             <Text style={[styles.doneSub,{color:C.textSecondary}]}>{t('reveal_all_done_sub')}</Text>
@@ -96,7 +96,7 @@ export default function RoleRevealScreen({ navigation }) {
             <Pressable style={[styles.nightBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>{startNight();navigation.replace('Night');}}>
               <Text style={styles.nightBtnTxt}>{t('reveal_start_night')}</Text>
             </Pressable>
-          </View>
+          </ScrollView>
         </TabletContainer>
       </SafeAreaView>
     </Gradient>
@@ -116,7 +116,7 @@ export default function RoleRevealScreen({ navigation }) {
               <View style={[styles.barFill,{width:`${((idx+1)/players.length)*100}%`,backgroundColor:C.primary}]}/>
             </View>
           </View>
-          <View style={styles.centered}>
+          <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.centered} showsVerticalScrollIndicator={false}>
             <Text style={[styles.instruction,{color:C.text}]}>
               {revealed ? fill(t('reveal_check_role'),{name:currentPlayer.name}) : fill(t('reveal_pass_phone'),{name:`${currentPlayer.avatar} ${currentPlayer.name}`})}
             </Text>
@@ -170,7 +170,7 @@ export default function RoleRevealScreen({ navigation }) {
                 <View key={i} style={[styles.dot,{backgroundColor:C.textDim},i===idx&&{backgroundColor:C.primary,width:20},i<idx&&{backgroundColor:C.village||'#27AE60'}]}/>
               ))}
             </View>
-          </View>
+          </ScrollView>
         </TabletContainer>
       </SafeAreaView>
     </Gradient>
@@ -182,7 +182,8 @@ const styles = StyleSheet.create({
   header:{paddingHorizontal:24,paddingTop:16,paddingBottom:8},
   progress:{...FONTS.small,textAlign:'right',marginBottom:6},
   bar:{height:3,borderRadius:2}, barFill:{height:'100%',borderRadius:2},
-  centered:{flex:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingBottom:24},
+  scrollFlex:{flex:1,width:'100%'},
+  centered:{flexGrow:1,alignItems:'center',justifyContent:'center',paddingHorizontal:24,paddingBottom:24,width:'100%'},
   instruction:{...FONTS.subtitle,textAlign:'center',marginBottom:24},
   cardWrap:{width:'100%',maxWidth:320,alignItems:'center'},
   card:{width:'100%',borderRadius:24,padding:28,alignItems:'center',borderWidth:2,shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:0.4,shadowRadius:8,elevation:5},
