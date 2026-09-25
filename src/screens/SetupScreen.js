@@ -17,6 +17,7 @@ import TabletContainer from '../components/TabletContainer';
 import { FONTS }       from '../components/theme';
 import { AVATAR_GROUPS, ASSIGNABLE_ROLES, ROLES, countCustomRoles, getAvatarEmoji, getRolePreview, isCustomLoadoutValid } from '../data/roles';
 import { loadProfiles, saveProfiles, makeId } from '../storage';
+import { balanceOf } from '../utils/balance';
 
 export const FALLBACK_AVATARS = ['👦','👧','🧒','👩','👨','🧑','👴','👵',
   '🧔','👲','👳','🧕','🕵️','👮','🧙','🧝'];
@@ -271,6 +272,18 @@ export default function SetupScreen({ navigation }) {
                         <Text style={[s.loadoutSummary, { color: C.textSecondary }]}>
                           {specialUsed} special · {Math.max(0, players.length - specialUsed)} villagers · {players.length} players
                         </Text>
+                        {loadoutOk && (() => {
+                          // Live balance readout for a hand-dealt deck — the auto table is left alone.
+                          const specials = ASSIGNABLE_ROLES.map(id => ({ id, count: custom[id] | 0 }));
+                          const b = balanceOf([...specials, { id: 'VILLAGER', count: Math.max(0, players.length - specialUsed) }]);
+                          const color = b.lean === 'balanced' ? C.primary : C.danger;
+                          return (
+                            <Text style={[s.loadoutSummary, { color, marginTop: 4 }]}
+                              accessibilityLabel={`Balance ${b.score}. ${b.lean === 'balanced' ? 'Balanced' : b.tip}`}>
+                              ⚖️ Balance {b.score > 0 ? '+' : ''}{b.score} · {b.lean === 'balanced' ? 'looks fair' : b.tip}
+                            </Text>
+                          );
+                        })()}
                         {!loadoutOk && (
                           <Text style={[s.loadoutWarn, { color: C.danger }]}>
                             {(custom.VILLAIN | 0) < 1
