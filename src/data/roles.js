@@ -211,6 +211,19 @@ export function isCustomLoadoutValid(playerCount, customRoles) {
   return total <= playerCount && evil >= 1 && evil < playerCount - evil;
 }
 
+/**
+ * A role mix saved with a roster, read back for this many players. Keeps only
+ * known roles (a mix saved by an older build may name one that's gone) and
+ * returns null when it no longer fits the table — e.g. the roster lost players —
+ * so setup falls back to the auto table instead of starting an unplayable game.
+ */
+export function restoreLoadout(playerCount, saved) {
+  if (!saved || typeof saved !== 'object') return null;
+  const clean = {};
+  for (const id of ASSIGNABLE_ROLES) clean[id] = Math.max(0, saved[id] | 0);
+  return isCustomLoadoutValid(playerCount, clean) ? clean : null;
+}
+
 function buildCustomRoles(playerCount, customRoles) {
   const roles = [];
   for (const id of ASSIGNABLE_ROLES) {

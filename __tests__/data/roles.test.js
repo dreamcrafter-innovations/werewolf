@@ -238,3 +238,15 @@ describe('AVATARS', () => {
     expect(AVATARS.length).toBeGreaterThanOrEqual(20);
   });
 });
+
+describe('restoreLoadout', () => {
+  const { restoreLoadout } = require('../../src/data/roles');
+  it('brings back a saved mix that still fits the table, dropping unknown roles', () => {
+    expect(restoreLoadout(8, { VILLAIN: 2, SEER: 1, GHOSTLY: 3 })).toMatchObject({ VILLAIN: 2, SEER: 1, HEALER: 0 });
+    expect(restoreLoadout(8, { VILLAIN: 2, SEER: 1, GHOSTLY: 3 })).not.toHaveProperty('GHOSTLY');
+  });
+  it('returns null when the roster has shrunk below the mix, or nothing was saved', () => {
+    expect(restoreLoadout(4, { VILLAIN: 2, SEER: 1, HEALER: 1 })).toBeNull();
+    expect(restoreLoadout(8, undefined)).toBeNull();
+  });
+});

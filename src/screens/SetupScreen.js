@@ -15,7 +15,7 @@ import { fill }        from '../utils/interpolate';
 import Gradient        from '../components/Gradient';
 import TabletContainer from '../components/TabletContainer';
 import { FONTS }       from '../components/theme';
-import { AVATAR_GROUPS, ASSIGNABLE_ROLES, ROLES, countCustomRoles, getAvatarEmoji, getRolePreview, isCustomLoadoutValid } from '../data/roles';
+import { AVATAR_GROUPS, ASSIGNABLE_ROLES, ROLES, countCustomRoles, getAvatarEmoji, getRolePreview, isCustomLoadoutValid, restoreLoadout } from '../data/roles';
 import { loadProfiles, saveProfiles, makeId } from '../storage';
 import { balanceOf } from '../utils/balance';
 
@@ -44,6 +44,7 @@ export default function SetupScreen({ navigation }) {
   const [profiles,     setProfiles]     = useState([]);
   const [activeGroup,  setActiveGroup]  = useState(null); // { id, name, players }
   const [activePlayer, setActivePlayer] = useState(null); // { id, name, avatarId }
+  const [loadedGroupId, setLoadedGroupId] = useState(null); // roster the table came from, for "save this mix"
 
   useEffect(() => {
     loadProfiles().then(p => setProfiles(Array.isArray(p) ? p : []));
@@ -111,7 +112,18 @@ export default function SetupScreen({ navigation }) {
   function loadGroupIntoSetup(group) {
     if (group.players.length < 4) { Alert.alert('', t('roster_too_few')); return; }
     setPlayers(group.players.map(p => ({ id: p.id, name: p.name, avatar: getAvatarEmoji(p.avatarId) })));
+    // A roster can carry its own role mix ("Friday crew, 9 players"); restore it when it still fits.
+    const mix = restoreLoadout(group.players.length, group.customRoles);
+    if (mix) setCustomRoles(mix);
+    setLoadedGroupId(group.id);
     setView('setup');
+  }
+
+  async function saveMixToGroup() {
+    const group = profiles.find(g => g.id === loadedGroupId);
+    if (!group || !custom || !loadoutOk) return;
+    await persistProfiles(profiles.map(g => g.id === group.id ? { ...g, customRoles: { ...custom } } : g));
+    Alert.alert('', fill(t('roster_mix_saved'), { name: group.name }));
   }
 
   function openNewGroup() {
@@ -200,7 +212,9 @@ export default function SetupScreen({ navigation }) {
                           {g.players.slice(0, 4).map(p => getAvatarEmoji(p.avatarId)).join(' ')}
                         </Text>
                         <Text style={[s.savedGroupName, { color: C.text }]} numberOfLines={1}>{g.name}</Text>
-                        <Text style={[s.savedGroupCount, { color: C.textDim }]}>{fill(t('roster_players'), { count: g.players.length })}</Text>
+                        <Text style={[s.savedGroupCount, { color: C.textDim }]}>
+                          {fill(t('roster_players'), { count: g.players.length })}{g.customRoles ? ` · ${t('roster_mix_badge')}` : ''}
+                        </Text>
                       </Pressable>
                     ))}
                   </ScrollView>
@@ -284,6 +298,13 @@ export default function SetupScreen({ navigation }) {
                             </Text>
                           );
                         })()}
+                        {loadoutOk && profiles.some(g => g.id === loadedGroupId) && (
+                          <Pressable onPress={saveMixToGroup} accessibilityRole="button" style={{ marginTop: 6 }}>
+                            <Text style={[s.loadoutSummary, { color: C.primary, fontWeight: '700' }]}>
+                              {fill(t('roster_mix_save'), { name: profiles.find(g => g.id === loadedGroupId).name })}
+                            </Text>
+                          </Pressable>
+                        )}
                         {!loadoutOk && (
                           <Text style={[s.loadoutWarn, { color: C.danger }]}>
                             {(custom.VILLAIN | 0) < 1
