@@ -25,7 +25,8 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B0B1E"
+        "backgroundColor": "#0B0B1E",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
       "package": "com.dreamcrafterinnovations.nightfall",
       "googleServicesFile": "./google-services.json",
