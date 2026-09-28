@@ -19,7 +19,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { loadSettings, saveSettings } from '../storage';
 
 export default function NightScreen({ navigation }) {
-  useKeepAwake(); // night discussion runs long; screen must not sleep mid-round
+  useKeepAwake(undefined, { suppressDeactivateWarnings: true }); // night discussion runs long; screen must not sleep mid-round
   const { state, villainTheme, setVillainTarget, setHealerProtect, setBodyguardProtect,
           setWitchSave, setWitchPoison, setCupidPair, setSeerCheck, resolveNight } = useGame();
   const { t } = useLanguage();

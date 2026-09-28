@@ -28,7 +28,7 @@ function mmss(secs) {
 }
 
 export default function DayScreen({ navigation }) {
-  useKeepAwake(); // discussion timer runs long; screen must not sleep mid-round
+  useKeepAwake(undefined, { suppressDeactivateWarnings: true }); // discussion timer runs long; screen must not sleep mid-round
   const { state, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();

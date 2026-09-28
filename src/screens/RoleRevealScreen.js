@@ -16,7 +16,7 @@ import { haptics } from '../utils/haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 
 export default function RoleRevealScreen({ navigation }) {
-  useKeepAwake(); // passing the phone player-to-player takes minutes; screen must not sleep
+  useKeepAwake(undefined, { suppressDeactivateWarnings: true }); // passing the phone player-to-player takes minutes; screen must not sleep
   const { state, startNight, villainTheme } = useGame();
   const { t } = useLanguage();
   const C = usePalette();

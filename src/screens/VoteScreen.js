@@ -17,7 +17,7 @@ import { haptics } from '../utils/haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 
 export default function VoteScreen({ navigation }) {
-  useKeepAwake(); // pass-the-phone voting runs long; screen must not sleep mid-round
+  useKeepAwake(undefined, { suppressDeactivateWarnings: true }); // pass-the-phone voting runs long; screen must not sleep mid-round
   const { state, villainTheme, castVote, resolveVote, hunterRevengeTarget, skipHunterRevenge, startNight } = useGame();
   const { t } = useLanguage();
   const C = usePalette();
