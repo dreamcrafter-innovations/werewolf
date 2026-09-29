@@ -1,8 +1,8 @@
 # AGENTS.md — Nightfall: Secret Roles
 
 Start here if you are an AI agent (Claude, Codex, Copilot…) or a new contributor.
-Everything between the `dreamcrafters:generated` markers below is regenerated from the repo;
-add hand-written notes above or below it.
+Everything between the `dreamcrafters:generated` markers below is regenerated from the repo
+(`node _tools/ci-kit/gen.mjs <dreamcrafters folder> <repo>`); add hand-written notes above or below it.
 
 ## Portfolio conventions (all dreamcrafters apps)
 
