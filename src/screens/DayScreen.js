@@ -1,5 +1,5 @@
 ﻿import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, Text, Pressable, Animated, ScrollView, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Animated, ScrollView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
@@ -21,6 +21,7 @@ import { haptics } from '../utils/haptics';
 import { useSpeech } from '../hooks/useSpeech';
 import { useKeepAwake } from 'expo-keep-awake';
 
+import { Tap } from '../components/Tap';
 function mmss(secs) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
@@ -279,12 +280,12 @@ export default function DayScreen({ navigation }) {
                     </View>
                   </View>
                   <View style={styles.timerBtns}>
-                    <Pressable style={[styles.timerBtn,{borderColor:C.cardBorder}]} onPress={()=>setPaused(!paused)} disabled={timeLeft===0}>
+                    <Tap style={[styles.timerBtn,{borderColor:C.cardBorder}]} onPress={()=>setPaused(!paused)} disabled={timeLeft===0}>
                       <Text style={[styles.timerBtnTxt,{color:timeLeft===0?C.textDim:C.textSecondary}]}>{paused?'▶ Resume':'⏸ Pause'}</Text>
-                    </Pressable>
-                    <Pressable style={[styles.timerBtn,{borderColor:C.cardBorder}]} onPress={()=>{setTimeLeft(limit);setPaused(false);}}>
+                    </Tap>
+                    <Tap style={[styles.timerBtn,{borderColor:C.cardBorder}]} onPress={()=>{setTimeLeft(limit);setPaused(false);}}>
                       <Text style={[styles.timerBtnTxt,{color:C.textSecondary}]}>↻ Reset</Text>
-                    </Pressable>
+                    </Tap>
                   </View>
                 </>
               )}
@@ -301,9 +302,9 @@ export default function DayScreen({ navigation }) {
 
             {/* replace, not navigate — Vote is revisited every round and must remount
                 fresh each time, otherwise it reopens on last round's stale result screen */}
-            <Pressable style={[styles.voteBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>navigation.replace('Vote')}>
+            <Tap style={[styles.voteBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>navigation.replace('Vote')}>
               <Text style={styles.voteBtnTxt}>{t('day_vote_btn')}</Text>
-            </Pressable>
+            </Tap>
           </ScrollView>
         </TabletContainer>
       </SafeAreaView>

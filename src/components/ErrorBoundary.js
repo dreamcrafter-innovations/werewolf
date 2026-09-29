@@ -3,11 +3,12 @@
 // friendly fallback instead of a white/blank screen, and reports the error
 // to Crashlytics (native prod builds only — recordError() no-ops on web).
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { recordError } from '../utils/analytics';
 import { COLORS, FONTS } from './theme';
 
+import { Tap } from './Tap';
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -40,9 +41,9 @@ export default class ErrorBoundary extends React.Component {
             The village spirits stumbled. Your progress in this round may be lost, but you can
             jump back in.
           </Text>
-          <Pressable style={styles.button} onPress={this.handleRetry}>
+          <Tap style={styles.button} onPress={this.handleRetry}>
             <Text style={styles.buttonText}>Try Again</Text>
-          </Pressable>
+          </Tap>
         </View>
       </SafeAreaView>
     );

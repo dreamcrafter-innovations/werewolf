@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, Animated, ScrollView, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Animated, ScrollView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
@@ -18,6 +18,7 @@ import { haptics } from '../utils/haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { loadSettings, saveSettings } from '../storage';
 
+import { Tap } from '../components/Tap';
 export default function NightScreen({ navigation }) {
   useKeepAwake(undefined, { suppressDeactivateWarnings: true }); // night discussion runs long; screen must not sleep mid-round
   const { state, villainTheme, setVillainTarget, setHealerProtect, setBodyguardProtect,
@@ -200,12 +201,12 @@ export default function NightScreen({ navigation }) {
                 <View style={[styles.narratorBox,{backgroundColor:C.primary+'15',borderColor:C.primary+'40'}]}>
                   <Text style={[styles.narratorText,{color:C.text}]}>{t('night_narrator_prompt_body')}</Text>
                 </View>
-                <Pressable style={[styles.nextBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>chooseNarrator(true)}>
+                <Tap style={[styles.nextBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>chooseNarrator(true)}>
                   <Text style={styles.nextBtnTxt}>{t('night_narrator_prompt_yes')}</Text>
-                </Pressable>
-                <Pressable style={styles.skipBtn} onPress={()=>chooseNarrator(false)}>
+                </Tap>
+                <Tap style={styles.skipBtn} onPress={()=>chooseNarrator(false)}>
                   <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('night_narrator_prompt_no')}</Text>
-                </Pressable>
+                </Tap>
               </View>
             ) : (
             <Animated.View style={[styles.body,{opacity:fadeAnim}]}>
@@ -234,13 +235,13 @@ export default function NightScreen({ navigation }) {
 
               {/* Witch life potion — a one-shot toggle, separate from the poison grid below */}
               {step==='WITCH'&&!witchHealUsed&&!!victim&&(
-                <Pressable
+                <Tap
                   style={[styles.potionBtn,{borderColor:C.village||'#27AE60',backgroundColor:(lifePotion?(C.village||'#27AE60'):'transparent')+(lifePotion?'33':'')}]}
                   onPress={()=>{ const next=!lifePotion; setLifePotion(next); setWitchSave(next); haptics.light(); }}>
                   <Text style={[styles.potionTxt,{color:C.village||'#27AE60'}]}>
                     {lifePotion ? `✅ Saving ${victim.name} with the life potion` : `🧪 Use life potion to save ${victim.name}`}
                   </Text>
-                </Pressable>
+                </Tap>
               )}
               {step==='WITCH'&&witchHealUsed&&(
                 <Text style={[styles.potionSpent,{color:C.textDim}]}>🧪 Life potion already spent</Text>
@@ -258,13 +259,13 @@ export default function NightScreen({ navigation }) {
                     {selectable.map(p=>{
                       const picked = isPicked(p.id);
                       return (
-                        <Pressable key={p.id}
+                        <Tap key={p.id}
                           style={[styles.playerChip,{backgroundColor:C.card,borderColor:picked?C.primary:C.cardBorder},picked&&{backgroundColor:C.primary+'20'}]}
                           onPress={()=>step==='CUPID'?togglePair(p.id):setSelected(selected===p.id?null:p.id)}>
                           <Text style={styles.chipAvatar}>{p.avatar}</Text>
                           <Text style={[styles.chipName,{color:picked?C.primary:C.textSecondary}]}>{p.name}</Text>
                           {picked&&<Text style={[styles.check,{color:C.primary}]}>✓</Text>}
-                        </Pressable>
+                        </Tap>
                       );
                     })}
                   </View>
@@ -281,13 +282,13 @@ export default function NightScreen({ navigation }) {
               )}
 
               {!seerResult&&(
-                <Pressable
+                <Tap
                   style={[styles.nextBtn,{backgroundColor:blocked?C.textDim:C.primary,shadowColor:C.primary}]}
                   onPress={handleNext}>
                   <Text style={styles.nextBtnTxt}>
                     {stepIdx===steps.length-1 ? t('night_dawn_btn') : t('night_continue')}
                   </Text>
-                </Pressable>
+                </Tap>
               )}
 
               {/* Skip abandons the whole turn, so it has to undo the Witch's life potion
@@ -295,9 +296,9 @@ export default function NightScreen({ navigation }) {
                   `lifePotion` flag the step-change effect resets, so without this a
                   narrator who toggled it and then skipped still spent the potion. */}
               {meta.action&&!seerResult&&(
-                <Pressable style={styles.skipBtn} onPress={()=>{setSelected(null);setPair([]);if(step==='WITCH'){setLifePotion(false);setWitchSave(false);}advance();}}>
+                <Tap style={styles.skipBtn} onPress={()=>{setSelected(null);setPair([]);if(step==='WITCH'){setLifePotion(false);setWitchSave(false);}advance();}}>
                   <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('night_skip')}</Text>
-                </Pressable>
+                </Tap>
               )}
             </Animated.View>
             )}

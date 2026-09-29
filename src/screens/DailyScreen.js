@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, useWindowDimensions,
+  View, Text, ScrollView, StyleSheet, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Gradient        from '../components/Gradient';
@@ -13,6 +13,7 @@ import {
 } from '../storage';
 import { logScreenView, logDailyChallengeStarted } from '../utils/analytics';
 
+import { Tap } from '../components/Tap';
 // ── Daily challenge determinism ───────────────────────────────────
 // Same seed per calendar day ensures every player sees the same challenge.
 function todayString() {
@@ -162,18 +163,18 @@ export default function DailyScreen({ navigation }) {
                 {/* CTA buttons */}
                 {!completed ? (
                   <>
-                    <Pressable
+                    <Tap
                       style={[styles.startBtn, { backgroundColor: villain.color, shadowColor: villain.color }]}
                       onPress={handleStartChallenge}
                     >
                       <Text style={styles.startBtnText}>▶  Start Today's Challenge</Text>
-                    </Pressable>
-                    <Pressable
+                    </Tap>
+                    <Tap
                       style={[styles.doneBtn, { borderColor: C.success }]}
                       onPress={handleMarkComplete}
                     >
                       <Text style={[styles.doneBtnText, { color: C.success }]}>✓  Mark as Completed</Text>
-                    </Pressable>
+                    </Tap>
                   </>
                 ) : (
                   <View style={[styles.completedRow, { backgroundColor: C.success + '22', borderColor: C.success }]}>

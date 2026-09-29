@@ -1,5 +1,5 @@
 ﻿import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, Pressable, Animated, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, Animated, ScrollView, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,6 +21,7 @@ import { evaluateBadges, BADGES } from '../data/badges';
 import { getActiveVillainTheme, getTheme } from '../data/villainThemes';
 import { haptics } from '../utils/haptics';
 
+import { Tap } from '../components/Tap';
 let ViewShot = null;
 try { ViewShot = require('react-native-view-shot').default; } catch (_) {}
 
@@ -254,17 +255,17 @@ export default function GameOverScreen({ navigation }) {
                 </View>
               )}
 
-              <Pressable style={[styles.playBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>{resetGame();navigation.navigate('Setup');}}>
+              <Tap style={[styles.playBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={()=>{resetGame();navigation.navigate('Setup');}}>
                 <Text style={styles.playBtnTxt}>{t('over_play_again')}</Text>
-              </Pressable>
+              </Tap>
               {/* Share button */}
-              <Pressable
+              <Tap
                 style={[styles.shareBtn, { borderColor: meta.accentColor, backgroundColor: meta.accentColor + '22' }, sharing && { opacity: 0.6 }]}
                 onPress={handleShare}
                 disabled={sharing}
               >
                 <Text style={[styles.shareBtnTxt, { color: meta.accentColor }]}>{sharing ? '⏳ Capturing...' : '📲 Share Result'}</Text>
-              </Pressable>
+              </Tap>
 
               {/* Hidden share card — captured by ViewShot */}
               {ViewShot ? (
@@ -301,9 +302,9 @@ export default function GameOverScreen({ navigation }) {
                   />
                 </View>
               )}
-              <Pressable style={[styles.homeBtn,{backgroundColor:C.card,borderColor:C.cardBorder}]} onPress={()=>{resetGame();navigation.navigate('Tabs');}}>
+              <Tap style={[styles.homeBtn,{backgroundColor:C.card,borderColor:C.cardBorder}]} onPress={()=>{resetGame();navigation.navigate('Tabs');}}>
                 <Text style={[styles.homeBtnTxt,{color:C.text}]}>{t('over_home')}</Text>
-              </Pressable>
+              </Tap>
             </Animated.View>
           </ScrollView>
         </TabletContainer>

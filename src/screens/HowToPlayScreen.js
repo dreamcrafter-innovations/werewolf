@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Animated, useWindowDimensions,
+  View, Text, ScrollView, StyleSheet, Animated, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Gradient        from '../components/Gradient';
@@ -11,6 +11,7 @@ import { awardBadge }  from '../storage';
 import { logScreenView } from '../utils/analytics';
 import { SceneNightWake, SceneVoteTally, SceneRoleFlip } from './howToPlay/Scenes';
 
+import { Tap } from '../components/Tap';
 const SCENES = { setup: SceneRoleFlip, night: SceneNightWake, day: SceneVoteTally };
 
 const STEPS = [
@@ -132,9 +133,9 @@ export default function HowToPlayScreen({ navigation }) {
                       keyboardShouldPersistTaps="handled">
 
             {/* Close button */}
-            <Pressable style={styles.closeBtn} onPress={() => navigation.goBack()}>
+            <Tap style={styles.closeBtn} onPress={() => navigation.goBack()}>
               <Text style={[styles.closeTxt, { color: C.textSecondary }]}>✕ Close</Text>
-            </Pressable>
+            </Tap>
 
             {/* Header */}
             <View style={styles.header}>
@@ -145,7 +146,7 @@ export default function HowToPlayScreen({ navigation }) {
             {/* Step dots */}
             <View style={styles.dotsRow}>
               {STEPS.map((_, i) => (
-                <Pressable key={i} onPress={() => goTo(i)}>
+                <Tap key={i} onPress={() => goTo(i)}>
                   <View style={[
                     styles.dot,
                     {
@@ -153,7 +154,7 @@ export default function HowToPlayScreen({ navigation }) {
                       width:           i === step ? 20 : 8,
                     },
                   ]} />
-                </Pressable>
+                </Tap>
               ))}
             </View>
 
@@ -183,28 +184,28 @@ export default function HowToPlayScreen({ navigation }) {
 
             {/* Navigation */}
             <View style={styles.navRow}>
-              <Pressable
+              <Tap
                 style={[styles.navBtn, { opacity: step === 0 ? 0.3 : 1 }]}
                 onPress={() => step > 0 && goTo(step - 1)}
                 disabled={step === 0}
               >
                 <Text style={[styles.navBtnText, { color: C.textSecondary }]}>← Back</Text>
-              </Pressable>
+              </Tap>
 
               {!isLast ? (
-                <Pressable
+                <Tap
                   style={[styles.nextBtn, { backgroundColor: C.primary }]}
                   onPress={() => goTo(step + 1)}
                 >
                   <Text style={styles.nextBtnText}>Next →</Text>
-                </Pressable>
+                </Tap>
               ) : (
-                <Pressable
+                <Tap
                   style={[styles.nextBtn, { backgroundColor: C.primary }]}
                   onPress={() => navigation.goBack()}
                 >
                   <Text style={styles.nextBtnText}>Done ✓</Text>
-                </Pressable>
+                </Tap>
               )}
             </View>
 

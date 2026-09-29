@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
@@ -16,6 +16,7 @@ import { getVoteTally, getVoteWeight } from '../utils/gameLogic';
 import { haptics } from '../utils/haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 
+import { Tap } from '../components/Tap';
 export default function VoteScreen({ navigation }) {
   useKeepAwake(undefined, { suppressDeactivateWarnings: true }); // pass-the-phone voting runs long; screen must not sleep mid-round
   const { state, villainTheme, castVote, resolveVote, hunterRevengeTarget, skipHunterRevenge, startNight } = useGame();
@@ -103,21 +104,21 @@ export default function VoteScreen({ navigation }) {
               <Text style={[styles.pickLabel,{color:C.text}]}>{t('vote_hunter_pick')}</Text>
               <View style={styles.grid}>
                 {targets.map(p=>(
-                  <Pressable key={p.id}
+                  <Tap key={p.id}
                     style={[styles.chip,{backgroundColor:C.card,borderColor:selected===p.id?C.primary:C.cardBorder},selected===p.id&&{backgroundColor:C.primary+'20'}]}
                     onPress={()=>setSelected(p.id)}>
                     <Text style={styles.chipAv}>{p.avatar}</Text>
                     <Text style={[styles.chipNm,{color:selected===p.id?C.primary:C.textSecondary}]}>{p.name}</Text>
-                  </Pressable>
+                  </Tap>
                 ))}
               </View>
-              <Pressable style={[styles.actionBtn,{backgroundColor:selected?C.primary:C.textDim,shadowColor:C.primary}]}
+              <Tap style={[styles.actionBtn,{backgroundColor:selected?C.primary:C.textDim,shadowColor:C.primary}]}
                 onPress={()=>{ if(selected){ haptics.warning(); hunterRevengeTarget(selected); } }}>
                 <Text style={styles.actionBtnTxt}>{t('vote_hunter_fire')}</Text>
-              </Pressable>
-              <Pressable style={styles.skipBtn} onPress={skipHunterRevenge}>
+              </Tap>
+              <Tap style={styles.skipBtn} onPress={skipHunterRevenge}>
                 <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('vote_hunter_skip')}</Text>
-              </Pressable>
+              </Tap>
             </ScrollView>
           </TabletContainer>
         </SafeAreaView>
@@ -179,9 +180,9 @@ export default function VoteScreen({ navigation }) {
                 </View>
               )}
 
-              <Pressable style={[styles.actionBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={afterResult}>
+              <Tap style={[styles.actionBtn,{backgroundColor:C.primary,shadowColor:C.primary}]} onPress={afterResult}>
                 <Text style={styles.actionBtnTxt}>{phase==='GAME_OVER'?t('vote_see_results'):t('vote_next_night')}</Text>
-              </Pressable>
+              </Tap>
             </ScrollView>
           </TabletContainer>
         </SafeAreaView>
@@ -225,22 +226,22 @@ export default function VoteScreen({ navigation }) {
             <Text style={[styles.promptTxt,{color:C.text}]}>{fill(t('vote_prompt'),{name:voter?.name})}</Text>
             <View style={styles.grid}>
               {alive.filter(p=>p.id!==voter?.id).map(p=>(
-                <Pressable key={p.id}
+                <Tap key={p.id}
                   style={[styles.chip,{backgroundColor:C.card,borderColor:selected===p.id?C.primary:C.cardBorder},selected===p.id&&{backgroundColor:C.primary+'20'}]}
                   onPress={()=>setSelected(p.id)}>
                   <Text style={styles.chipAv}>{p.avatar}</Text>
                   <Text style={[styles.chipNm,{color:selected===p.id?C.primary:C.textSecondary}]}>{p.name}</Text>
                   {selected===p.id&&<Text style={[styles.check,{color:C.primary}]}>✓</Text>}
-                </Pressable>
+                </Tap>
               ))}
             </View>
 
-            <Pressable style={[styles.actionBtn,{backgroundColor:selected?C.primary:C.textDim,shadowColor:C.primary}]} onPress={()=>doVote(false)}>
+            <Tap style={[styles.actionBtn,{backgroundColor:selected?C.primary:C.textDim,shadowColor:C.primary}]} onPress={()=>doVote(false)}>
               <Text style={styles.actionBtnTxt}>{selected?fill(t('vote_confirm'),{name:players.find(p=>p.id===selected)?.name}):t('vote_choose')}</Text>
-            </Pressable>
-            <Pressable style={styles.skipBtn} onPress={()=>doVote(true)}>
+            </Tap>
+            <Tap style={styles.skipBtn} onPress={()=>doVote(true)}>
               <Text style={[styles.skipTxt,{color:C.textDim}]}>{t('vote_abstain')}</Text>
-            </Pressable>
+            </Tap>
           </ScrollView>
         </TabletContainer>
       </SafeAreaView>

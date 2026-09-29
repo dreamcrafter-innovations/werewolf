@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { Pressable, Animated } from 'react-native';
+import { Animated } from 'react-native';
 
+import { Tap } from './Tap';
 /**
  * Simple animated toggle switch.
  * No react-native-reanimated required — uses core Animated API.
@@ -27,7 +28,7 @@ export default function Toggle({ value, onToggle, activeColor = '#FF8C00' }) {
   });
 
   return (
-    <Pressable onPress={onToggle} style={{ cursor: 'pointer' }} hitSlop={8}>
+    <Tap onPress={onToggle} style={{ cursor: 'pointer' }} hitSlop={8}>
       <Animated.View
         style={{
           width: 50, height: 28, borderRadius: 14,
@@ -49,6 +50,6 @@ export default function Toggle({ value, onToggle, activeColor = '#FF8C00' }) {
           }}
         />
       </Animated.View>
-    </Pressable>
+    </Tap>
   );
 }

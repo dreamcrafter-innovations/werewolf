@@ -1,10 +1,11 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, Alert } from 'react-native';
+import { Text, StyleSheet, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePalette } from '../hooks/usePalette';
 import { haptics } from '../utils/haptics';
 
+import { Tap } from './Tap';
 /**
  * Quit affordance for the mid-round screens (Day/Night/Vote).
  *
@@ -41,7 +42,7 @@ export default function AbandonGameButton({ navigation }) {
   };
 
   return (
-    <Pressable
+    <Tap
       onPress={confirmAbandon}
       hitSlop={12}
       style={[styles.btn, { backgroundColor: C.card, borderColor: C.textDim }]}
@@ -49,7 +50,7 @@ export default function AbandonGameButton({ navigation }) {
       accessibilityLabel={t('abandon_label')}
     >
       <Text style={[styles.txt, { color: C.textSecondary }]}>✕</Text>
-    </Pressable>
+    </Tap>
   );
 }
 

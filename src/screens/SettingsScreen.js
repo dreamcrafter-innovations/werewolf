@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Platform, Linking,
+  View, Text, ScrollView, StyleSheet, Platform, Linking,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { openSupportLink } from '../utils/supportLink';
 import { setHapticsEnabledCache } from '../utils/haptics';
 import { NARRATOR_DEFAULTS } from '../hooks/useSpeech';
 
+import { Tap } from '../components/Tap';
 let Speech = null;
 try { Speech = require('expo-speech'); } catch (_) {}
 
@@ -167,11 +168,11 @@ export default function SettingsScreen({ navigation }) {
                       {RATE_OPTIONS.map(o => {
                         const on = Math.abs(narratorRate - o.v) < 0.01;
                         return (
-                          <Pressable key={o.label}
+                          <Tap key={o.label}
                             style={[styles.seg, { borderColor: on ? C.primary : C.cardBorder, backgroundColor: on ? C.primary + '22' : 'transparent' }]}
                             onPress={() => { persist('narratorRate', o.v, setNarratorRate); previewVoice(o.v, narratorPitch); }}>
                             <Text style={[styles.segTxt, { color: on ? C.primary : C.textSecondary }]}>{o.label}</Text>
-                          </Pressable>
+                          </Tap>
                         );
                       })}
                     </View>
@@ -183,22 +184,22 @@ export default function SettingsScreen({ navigation }) {
                       {PITCH_OPTIONS.map(o => {
                         const on = Math.abs(narratorPitch - o.v) < 0.01;
                         return (
-                          <Pressable key={o.label}
+                          <Tap key={o.label}
                             style={[styles.seg, { borderColor: on ? C.primary : C.cardBorder, backgroundColor: on ? C.primary + '22' : 'transparent' }]}
                             onPress={() => { persist('narratorPitch', o.v, setNarratorPitch); previewVoice(narratorRate, o.v); }}>
                             <Text style={[styles.segTxt, { color: on ? C.primary : C.textSecondary }]}>{o.label}</Text>
-                          </Pressable>
+                          </Tap>
                         );
                       })}
                     </View>
                   </View>
                   <View style={divStyle} />
-                  <Pressable style={rowStyle} onPress={() => previewVoice()}>
+                  <Tap style={rowStyle} onPress={() => previewVoice()}>
                     <View style={styles.rowTextWrap}>
                       <Text style={[rowLabelStyle, { color: C.primary, fontWeight: '700' }]}>▶ Test the narrator</Text>
                       <Text style={[styles.rowSub, rowSubStyle]}>Hear the current speed and voice</Text>
                     </View>
-                  </Pressable>
+                  </Tap>
                 </>
               )}
             </View>
@@ -215,11 +216,11 @@ export default function SettingsScreen({ navigation }) {
                   {TIMER_OPTIONS.map(o => {
                     const on = dayTimerSeconds === o.secs;
                     return (
-                      <Pressable key={o.label}
+                      <Tap key={o.label}
                         style={[styles.seg, { borderColor: on ? C.primary : C.cardBorder, backgroundColor: on ? C.primary + '22' : 'transparent' }]}
                         onPress={() => persist('dayTimerSeconds', o.secs, setDayTimerSeconds)}>
                         <Text style={[styles.segTxt, { color: on ? C.primary : C.textSecondary }]}>{o.label}</Text>
-                      </Pressable>
+                      </Tap>
                     );
                   })}
                 </View>
@@ -229,7 +230,7 @@ export default function SettingsScreen({ navigation }) {
             {/* ── HOW TO PLAY ───────────────────────────────────── */}
             <SectionLabel style={[styles.sectionGap, { color: C.primary }]}>About</SectionLabel>
             <View style={[styles.card, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
-              <Pressable
+              <Tap
                 style={rowStyle}
                 onPress={() => navigation.navigate('HowToPlay')}
               >
@@ -238,15 +239,15 @@ export default function SettingsScreen({ navigation }) {
                   <Text style={[styles.rowSub, rowSubStyle]}>Rules, roles &amp; strategy</Text>
                 </View>
                 <Text style={{ color: C.textDim, fontSize: 18 }}>›</Text>
-              </Pressable>
+              </Tap>
               <View style={divStyle} />
-              <Pressable style={rowStyle} onPress={openPrivacy}>
+              <Tap style={rowStyle} onPress={openPrivacy}>
                 <View style={styles.rowTextWrap}>
                   <Text style={rowLabelStyle}>Privacy Policy</Text>
                   <Text style={[styles.rowSub, rowSubStyle]}>dreamcrafterinnovations.com</Text>
                 </View>
                 <Text style={{ color: C.textDim, fontSize: 18 }}>›</Text>
-              </Pressable>
+              </Tap>
             </View>
 
             {/* ── SUPPORT US ───────────────────────────────────── */}
@@ -259,7 +260,7 @@ export default function SettingsScreen({ navigation }) {
                 </View>
               </View>
               <View style={divStyle} />
-              <Pressable
+              <Tap
                 style={[rowStyle, styles.kofiRow, { backgroundColor: '#FF5E5B' + '18', borderColor: '#FF5E5B' }]}
                 onPress={handleSupportPress}
               >
@@ -269,7 +270,7 @@ export default function SettingsScreen({ navigation }) {
                   <Text style={[styles.rowSub, rowSubStyle]}>ko-fi.com/dreamcrafterinnovations</Text>
                 </View>
                 <Text style={{ color: '#FF5E5B', fontSize: 18 }}>›</Text>
-              </Pressable>
+              </Tap>
             </View>
 
             {/* ── APP INFO ──────────────────────────────────────── */}

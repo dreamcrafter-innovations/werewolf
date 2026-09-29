@@ -18,6 +18,7 @@ import DailyScreen      from '../screens/DailyScreen';
 import HowToPlayScreen  from '../screens/HowToPlayScreen';
 
 import { useTheme } from '../context/ThemeContext';
+import { tap } from '../components/haptics';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -37,7 +38,9 @@ function TabNavigator() {
 
   return (
     <Tab.Navigator
+      screenListeners={{ tabPress: tap }}
       screenOptions={{
+        animation: 'shift',
         headerShown: false,
         tabBarStyle: {
           backgroundColor:  palette.tabBg,

@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet, ScrollView, FlatList, Switch, useWindowDimensions } from 'react-native';
+import { View, Text, Animated, StyleSheet, ScrollView, FlatList, Switch, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
@@ -14,6 +14,7 @@ import { logThemeSelected, logScreenView } from '../utils/analytics';
 import { loadSettings, saveSettings, makeId } from '../storage';
 import { FALLBACK_AVATARS } from './SetupScreen';
 
+import { Tap } from '../components/Tap';
 export default function HomeScreen({ navigation }) {
   const { resetGame, state, startGame, setVillainTheme, toggleThemeSelect, selectAllThemes, setKnowsAllies, setVillainCount, setAllowGhostVotes, setCustomRoles, villainTheme } = useGame();
   const { t } = useLanguage();
@@ -136,12 +137,12 @@ export default function HomeScreen({ navigation }) {
             {/* Villain */}
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionLabel,{color:C.textDim,marginBottom:0}]}>{t('home_choose_villain')}</Text>
-              <Pressable
+              <Tap
                 style={[styles.intlToggle, showInternational && {borderColor:'#4A90D9', backgroundColor:'#4A90D925'}]}
                 onPress={()=>setShowInternational(v=>!v)}
               >
                 <Text style={[styles.intlToggleText,{color:showInternational?'#4A90D9':C.textDim}]}>🌍 International</Text>
-              </Pressable>
+              </Tap>
             </View>
             <View style={styles.themeScrollWrapper}>
               {/* Left fade + arrow — appears after user scrolls right */}
@@ -161,7 +162,7 @@ export default function HomeScreen({ navigation }) {
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.rowList}
                 ListHeaderComponent={
-                  <Pressable
+                  <Tap
                     style={[styles.themeCard,{
                       backgroundColor: C.card,
                       borderColor: C.cardBorder,
@@ -174,19 +175,19 @@ export default function HomeScreen({ navigation }) {
                     <Text style={styles.themeEmoji}>🎲</Text>
                     <Text style={[styles.themeLabel,{color:C.text}]}>Random</Text>
                     <Text style={[styles.themeSub,{color:C.textDim}]}>All themes</Text>
-                  </Pressable>
+                  </Tap>
                 }
                 renderItem={({item})=>{
                   const sel = state.selectedThemeIds.includes(item.id);
                   return (
-                    <Pressable style={[styles.themeCard,{backgroundColor:sel?item.color+'25':C.card,borderColor:sel?item.color:C.cardBorder}]}
+                    <Tap style={[styles.themeCard,{backgroundColor:sel?item.color+'25':C.card,borderColor:sel?item.color:C.cardBorder}]}
                       onPress={()=>{toggleThemeSelect(item.id);logThemeSelected(item.id);}}>
                       <Text style={styles.themeEmoji}>{item.emoji}</Text>
                       <Text style={[styles.themeLabel,{color:sel?item.color:C.text}]}>{item.label}</Text>
                       <Text style={[styles.themeSub,{color:C.textDim}]}>{item.sublabel}</Text>
                       {sel&&<View style={[styles.selDot,{backgroundColor:item.color}]}/>}
                       {sel&&<Text style={[styles.selCheck,{color:item.color}]}>✓</Text>}
-                    </Pressable>
+                    </Tap>
                   );
                 }}
               />
@@ -199,7 +200,7 @@ export default function HomeScreen({ navigation }) {
 
             {/* Select all visible themes at once — mixes villains from every selected
                 theme into the same game (each VILLAIN player draws their own flavor). */}
-            <Pressable
+            <Tap
               style={styles.selectAllRow}
               onPress={()=>selectAllThemes(visibleThemes.map(th=>th.id))}
             >
@@ -208,7 +209,7 @@ export default function HomeScreen({ navigation }) {
                   ? `✓ All ${visibleThemes.length} themes selected — mixed villains!`
                   : `✨ Select all ${visibleThemes.length} themes to mix villains`}
               </Text>
-            </Pressable>
+            </Tap>
 
             {/* Scroll hint pill — only visible before first scroll */}
             {!themeScrollInfo.canLeft && themeScrollInfo.canRight && (
@@ -217,9 +218,9 @@ export default function HomeScreen({ navigation }) {
               </View>
             )}
             {!showInternational&&(
-              <Pressable onPress={()=>setShowInternational(true)}>
+              <Tap onPress={()=>setShowInternational(true)}>
                 <Text style={[styles.randomHint,{color:C.textDim}]}>🌍 Tap to show international villain themes</Text>
-              </Pressable>
+              </Tap>
             )}
 
             {/* Evil mode settings — side by side */}
@@ -249,23 +250,23 @@ export default function HomeScreen({ navigation }) {
                     : `Up to ${state.villainCount} evil player${state.villainCount > 1 ? 's' : ''} · max ⅓ of the table`}
                 </Text>
                 <View style={[styles.stepperRow,{marginTop:10}]}>
-                  <Pressable
+                  <Tap
                     style={[styles.stepBtn,{borderColor:C.cardBorder},state.villainCount<=0&&{opacity:0.3}]}
                     onPress={()=>setVillainCount(Math.max(0,state.villainCount-1))}
                     disabled={state.villainCount<=0}
                   >
                     <Text style={[styles.stepBtnText,{color:C.text}]}>−</Text>
-                  </Pressable>
+                  </Tap>
                   <Text style={[styles.stepVal,{color:C.primary}]}>
                     {state.villainCount===0?'Auto':state.villainCount}
                   </Text>
-                  <Pressable
+                  <Tap
                     style={[styles.stepBtn,{borderColor:C.cardBorder},state.villainCount>=3&&{opacity:0.3}]}
                     onPress={()=>setVillainCount(Math.min(3,state.villainCount+1))}
                     disabled={state.villainCount>=3}
                   >
                     <Text style={[styles.stepBtnText,{color:C.text}]}>+</Text>
-                  </Pressable>
+                  </Tap>
                 </View>
               </View>
             </View>
@@ -310,27 +311,27 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <Animated.View style={[styles.btnWrap,{transform:[{scale:btnScale}]}]}>
-              <Pressable style={({pressed})=>[styles.btn,{backgroundColor:C.primary,shadowColor:C.primary},pressed&&{opacity:0.8}]}
+              <Tap style={({pressed})=>[styles.btn,{backgroundColor:C.primary,shadowColor:C.primary},pressed&&{opacity:0.8}]}
                 onPress={quickStart}>
                 <Text style={styles.btnText}>{t('home_quick_start_btn')}</Text>
-              </Pressable>
+              </Tap>
             </Animated.View>
 
-            <Pressable
+            <Tap
               style={[styles.customSetupBtn,{borderColor:C.cardBorder}]}
               onPress={()=>{
                 resetGame(state.villainThemeId);
                 navigation.navigate('Setup');
               }}>
               <Text style={[styles.customSetupTxt,{color:C.textSecondary}]}>{t('home_start_btn')}</Text>
-            </Pressable>
+            </Tap>
 
-            <Pressable
+            <Tap
               style={[styles.howToBtn,{borderColor:C.cardBorder}]}
               onPress={()=>navigation.navigate('HowToPlay')}
             >
               <Text style={[styles.howToBtnText,{color:C.textSecondary}]}>❓ How to Play</Text>
-            </Pressable>
+            </Tap>
 
             <Text style={[styles.note,{color:C.textDim}]}>{t('home_player_note')}</Text>
           </ScrollView>

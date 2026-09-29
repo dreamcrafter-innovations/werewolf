@@ -19,6 +19,7 @@ import { AVATAR_GROUPS, ASSIGNABLE_ROLES, ROLES, countCustomRoles, getAvatarEmoj
 import { loadProfiles, saveProfiles, makeId } from '../storage';
 import { balanceOf } from '../utils/balance';
 
+import { Tap } from '../components/Tap';
 export const FALLBACK_AVATARS = ['👦','👧','🧒','👩','👨','🧑','👴','👵',
   '🧔','👲','👳','🧕','🕵️','👮','🧙','🧝'];
 
@@ -191,13 +192,13 @@ export default function SetupScreen({ navigation }) {
         <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <TabletContainer>
             <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
-              <Pressable onPress={() => navigation.goBack()}>
+              <Tap onPress={() => navigation.goBack()}>
                 <Text style={[s.backBtn, { color: C.primary }]}>{t('setup_back')}</Text>
-              </Pressable>
+              </Tap>
               <Text style={[s.headerTitle, { color: C.text }]}>{t('setup_title')}</Text>
-              <Pressable onPress={() => setView('roster')}>
+              <Tap onPress={() => setView('roster')}>
                 <Text style={[s.headerRight, { color: C.primary }]}>{t('setup_rosters_btn')}</Text>
-              </Pressable>
+              </Tap>
             </View>
             <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               {/* Repeat groups are the retention mechanism here — one tap to reload the
@@ -207,7 +208,7 @@ export default function SetupScreen({ navigation }) {
                   <Text style={[s.savedGroupsLabel, { color: C.textSecondary }]}>{t('roster_title')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.savedGroupsRow}>
                     {profiles.map(g => (
-                      <Pressable key={g.id} style={[s.savedGroupChip, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => loadGroupIntoSetup(g)}>
+                      <Tap key={g.id} style={[s.savedGroupChip, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => loadGroupIntoSetup(g)}>
                         <Text style={s.savedGroupAvatars} numberOfLines={1}>
                           {g.players.slice(0, 4).map(p => getAvatarEmoji(p.avatarId)).join(' ')}
                         </Text>
@@ -215,17 +216,17 @@ export default function SetupScreen({ navigation }) {
                         <Text style={[s.savedGroupCount, { color: C.textDim }]}>
                           {fill(t('roster_players'), { count: g.players.length })}{g.customRoles ? ` · ${t('roster_mix_badge')}` : ''}
                         </Text>
-                      </Pressable>
+                      </Tap>
                     ))}
                   </ScrollView>
                 </View>
               )}
 
-              <Pressable style={[s.previewBanner, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => setShowPreview(!showPreview)}>
+              <Tap style={[s.previewBanner, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => setShowPreview(!showPreview)}>
                 <Text style={[s.previewText, { color: C.textSecondary }]}>
                   {fill(t('setup_preview_btn'), { count: players.length, arrow: showPreview ? '▲' : '▼' })}
                 </Text>
-              </Pressable>
+              </Tap>
 
               {(showPreview || !loadoutOk) && (
                 <View style={[s.previewBox, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
@@ -233,10 +234,10 @@ export default function SetupScreen({ navigation }) {
                   <View style={s.modeRow}>
                     {[{ on: !isCustom, label: '⚖️ Auto', onPress: () => setCustomRoles(null) },
                       { on: isCustom,  label: '🎛️ Custom', onPress: () => setCustomRoles(custom ?? DEFAULT_LOADOUT) }].map(m => (
-                      <Pressable key={m.label} onPress={m.onPress}
+                      <Tap key={m.label} onPress={m.onPress}
                         style={[s.modeBtn, { borderColor: m.on ? C.primary : C.cardBorder, backgroundColor: m.on ? C.primary + '22' : 'transparent' }]}>
                         <Text style={[s.modeTxt, { color: m.on ? C.primary : C.textSecondary }]}>{m.label}</Text>
-                      </Pressable>
+                      </Tap>
                     ))}
                   </View>
 
@@ -269,15 +270,15 @@ export default function SetupScreen({ navigation }) {
                               <Text style={[s.previewName, { color }]}>{ro?.name ?? role.name}</Text>
                               <Text style={[s.loadoutHint, { color: C.textDim }]} numberOfLines={2}>{ro?.hint ?? role.hint}</Text>
                             </View>
-                            <Pressable style={[s.stepBtn, { borderColor: C.cardBorder, opacity: count === 0 ? 0.35 : 1 }]}
+                            <Tap style={[s.stepBtn, { borderColor: C.cardBorder, opacity: count === 0 ? 0.35 : 1 }]}
                               onPress={() => bumpRole(id, -1)} disabled={count === 0}>
                               <Text style={[s.stepTxt, { color: C.text }]}>−</Text>
-                            </Pressable>
+                            </Tap>
                             <Text style={[s.stepCount, { color: count ? color : C.textDim }]}>{count}</Text>
-                            <Pressable style={[s.stepBtn, { borderColor: C.cardBorder, opacity: atCap ? 0.35 : 1 }]}
+                            <Tap style={[s.stepBtn, { borderColor: C.cardBorder, opacity: atCap ? 0.35 : 1 }]}
                               onPress={() => bumpRole(id, 1)} disabled={atCap}>
                               <Text style={[s.stepTxt, { color: C.text }]}>+</Text>
-                            </Pressable>
+                            </Tap>
                           </View>
                         );
                       })}
@@ -299,11 +300,11 @@ export default function SetupScreen({ navigation }) {
                           );
                         })()}
                         {loadoutOk && profiles.some(g => g.id === loadedGroupId) && (
-                          <Pressable onPress={saveMixToGroup} accessibilityRole="button" style={{ marginTop: 6 }}>
+                          <Tap onPress={saveMixToGroup} accessibilityRole="button" style={{ marginTop: 6 }}>
                             <Text style={[s.loadoutSummary, { color: C.primary, fontWeight: '700' }]}>
                               {fill(t('roster_mix_save'), { name: profiles.find(g => g.id === loadedGroupId).name })}
                             </Text>
-                          </Pressable>
+                          </Tap>
                         )}
                         {!loadoutOk && (
                           <Text style={[s.loadoutWarn, { color: C.danger }]}>
@@ -323,9 +324,9 @@ export default function SetupScreen({ navigation }) {
               {players.map((p, i) => (
                 <View key={p.id} style={[s.playerRow, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
                   <Text style={[s.num, { color: C.textDim }]}>{i + 1}</Text>
-                  <Pressable style={[s.avatarBtn, { backgroundColor: C.surface, borderColor: C.cardBorder }]} onPress={() => setAvatarTarget(p.id)}>
+                  <Tap style={[s.avatarBtn, { backgroundColor: C.surface, borderColor: C.cardBorder }]} onPress={() => setAvatarTarget(p.id)}>
                     <Text style={s.avatarEmoji}>{p.avatar}</Text>
-                  </Pressable>
+                  </Tap>
                   <TextInput
                     style={[s.input, { color: C.text, backgroundColor: C.surface, borderColor: C.cardBorder }]}
                     value={p.name} onChangeText={t2 => updateName(p.id, t2)}
@@ -333,26 +334,26 @@ export default function SetupScreen({ navigation }) {
                     maxLength={16} autoCapitalize="words"
                   />
                   {players.length > 4 && (
-                    <Pressable style={[s.removeBtn, { backgroundColor: C.evil + '33' }]} onPress={() => removePlayer(p.id)}>
+                    <Tap style={[s.removeBtn, { backgroundColor: C.evil + '33' }]} onPress={() => removePlayer(p.id)}>
                       <Text style={[s.removeTxt, { color: C.danger }]}>✕</Text>
-                    </Pressable>
+                    </Tap>
                   )}
                 </View>
               ))}
 
               {players.length < 16 && (
-                <Pressable style={[s.addBtn, { borderColor: C.primary, backgroundColor: C.primary + '08' }]} onPress={addPlayer}>
+                <Tap style={[s.addBtn, { borderColor: C.primary, backgroundColor: C.primary + '08' }]} onPress={addPlayer}>
                   <Text style={[s.addTxt, { color: C.primary }]}>{t('setup_add_player')}</Text>
-                </Pressable>
+                </Tap>
               )}
 
               {canQuickFill && (
-                <Pressable style={[s.quickBtn, { borderColor: C.cardBorder, backgroundColor: C.card }]} onPress={quickFillPlayers}>
+                <Tap style={[s.quickBtn, { borderColor: C.cardBorder, backgroundColor: C.card }]} onPress={quickFillPlayers}>
                   <Text style={[s.quickTxt, { color: C.textSecondary }]}>⚡ Quick Start (auto-fill 6 players)</Text>
-                </Pressable>
+                </Tap>
               )}
 
-              <Pressable style={[s.startBtn, { backgroundColor: canStart ? C.primary : C.textDim, shadowColor: C.primary }]} onPress={handleStart}>
+              <Tap style={[s.startBtn, { backgroundColor: canStart ? C.primary : C.textDim, shadowColor: C.primary }]} onPress={handleStart}>
                 {/* '(Fill in all names)' was shown for every blocker, including
                     "only 2 players" and an invalid custom loadout — neither of which
                     a name tells you how to fix. Name the actual blocker instead. */}
@@ -365,7 +366,7 @@ export default function SetupScreen({ navigation }) {
                         ? '(Fix the role loadout above)'
                         : t('setup_start_disabled')}
                 </Text>
-              </Pressable>
+              </Tap>
 
               <Text style={[s.note, { color: C.textDim }]}>{t('setup_note')}</Text>
             </ScrollView>
@@ -375,7 +376,7 @@ export default function SetupScreen({ navigation }) {
           {/* Avatar picker overlay for setup-view players */}
           {avatarTarget !== null && (
             <Pressable style={s.overlayBg} onPress={() => setAvatarTarget(null)}>
-              <Pressable style={[s.sheet, { backgroundColor: C.surface, borderColor: C.cardBorder }]} onPress={() => {}}>
+              <Tap style={[s.sheet, { backgroundColor: C.surface, borderColor: C.cardBorder }]} onPress={() => {}}>
                 <Text style={[s.sheetTitle, { color: C.text }]}>{t('setup_avatar_title')}</Text>
                 <ScrollView showsVerticalScrollIndicator={false} style={s.sheetScroll}>
                   {AVATAR_GROUPS.map(g => (
@@ -383,15 +384,15 @@ export default function SetupScreen({ navigation }) {
                       <Text style={[s.groupLabel, { color: C.textSecondary }]}>{g.label}</Text>
                       <View style={s.avatarGrid}>
                         {g.items.map(a => (
-                          <Pressable key={a.id} style={[s.avatarOpt, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => applyAvatar(avatarTarget, a.emoji)}>
+                          <Tap key={a.id} style={[s.avatarOpt, { backgroundColor: C.card, borderColor: C.cardBorder }]} onPress={() => applyAvatar(avatarTarget, a.emoji)}>
                             <Text style={s.avatarOptEmoji}>{a.emoji}</Text>
-                          </Pressable>
+                          </Tap>
                         ))}
                       </View>
                     </View>
                   ))}
                 </ScrollView>
-              </Pressable>
+              </Tap>
             </Pressable>
           )}
         </SafeAreaView>
@@ -406,22 +407,22 @@ export default function SetupScreen({ navigation }) {
         <SafeAreaView style={s.flex}>
           <TabletContainer>
             <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
-              <Pressable onPress={() => setView('setup')}>
+              <Tap onPress={() => setView('setup')}>
                 <Text style={[s.backBtn, { color: C.primary }]}>{t('setup_back')}</Text>
-              </Pressable>
+              </Tap>
               <Text style={[s.headerTitle, { color: C.text }]}>{t('roster_title')}</Text>
-              <Pressable onPress={openNewGroup}>
+              <Tap onPress={openNewGroup}>
                 <Text style={[s.headerRight, { color: C.primary }]}>{t('roster_new')}</Text>
-              </Pressable>
+              </Tap>
             </View>
             <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
               {profiles.length === 0 ? (
                 <View style={s.emptyWrap}>
                   <Text style={s.emptyIcon}>📋</Text>
                   <Text style={[s.emptyText, { color: C.textSecondary }]}>{t('roster_empty')}</Text>
-                  <Pressable style={[s.addBtn, { borderColor: C.primary, backgroundColor: C.primary + '08', marginTop: 8 }]} onPress={openNewGroup}>
+                  <Tap style={[s.addBtn, { borderColor: C.primary, backgroundColor: C.primary + '08', marginTop: 8 }]} onPress={openNewGroup}>
                     <Text style={[s.addTxt, { color: C.primary }]}>{t('roster_new')}</Text>
-                  </Pressable>
+                  </Tap>
                 </View>
               ) : profiles.map(g => (
                 <View key={g.id} style={[s.rosterCard, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
@@ -435,12 +436,12 @@ export default function SetupScreen({ navigation }) {
                     </Text>
                   </View>
                   <View style={s.rosterActions}>
-                    <Pressable style={[s.rosterActionBtn, { backgroundColor: C.primary + '22', borderColor: C.primary }]} onPress={() => loadGroupIntoSetup(g)}>
+                    <Tap style={[s.rosterActionBtn, { backgroundColor: C.primary + '22', borderColor: C.primary }]} onPress={() => loadGroupIntoSetup(g)}>
                       <Text style={[s.rosterActionTxt, { color: C.primary }]}>{t('roster_load')}</Text>
-                    </Pressable>
-                    <Pressable style={[s.rosterActionBtn, { backgroundColor: C.surface, borderColor: C.cardBorder }]} onPress={() => openEditGroup(g)}>
+                    </Tap>
+                    <Tap style={[s.rosterActionBtn, { backgroundColor: C.surface, borderColor: C.cardBorder }]} onPress={() => openEditGroup(g)}>
                       <Text style={[s.rosterActionTxt, { color: C.textSecondary }]}>{t('roster_edit')}</Text>
-                    </Pressable>
+                    </Tap>
                   </View>
                 </View>
               ))}
@@ -460,12 +461,12 @@ export default function SetupScreen({ navigation }) {
         <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <TabletContainer>
             <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
-              <Pressable onPress={async () => {
+              <Tap onPress={async () => {
                 if (activeGroup?.name?.trim()) await saveGroup();
                 else setView('roster');
               }}>
                 <Text style={[s.backBtn, { color: C.primary }]}>{t('setup_back')}</Text>
-              </Pressable>
+              </Tap>
               <Text style={[s.headerTitle, { color: C.text }]}>
                 {isNew ? t('edit_group_title_new') : t('edit_group_title_edit')}
               </Text>
@@ -487,27 +488,27 @@ export default function SetupScreen({ navigation }) {
                   <Text style={[s.num, { color: C.textDim }]}>{i + 1}</Text>
                   <Text style={[s.avatarEmoji, { width: 36, textAlign: 'center' }]}>{getAvatarEmoji(p.avatarId)}</Text>
                   <Text style={[s.playerNameTxt, { color: C.text }]}>{p.name}</Text>
-                  <Pressable style={[s.editBtn, { borderColor: C.cardBorder, backgroundColor: C.surface }]} onPress={() => openEditPlayer(p)}>
+                  <Tap style={[s.editBtn, { borderColor: C.cardBorder, backgroundColor: C.surface }]} onPress={() => openEditPlayer(p)}>
                     <Text style={[s.editBtnTxt, { color: C.textSecondary }]}>✎</Text>
-                  </Pressable>
-                  <Pressable style={[s.removeBtn, { backgroundColor: C.evil + '33' }]} onPress={() => removePlayerFromGroup(p.id)}>
+                  </Tap>
+                  <Tap style={[s.removeBtn, { backgroundColor: C.evil + '33' }]} onPress={() => removePlayerFromGroup(p.id)}>
                     <Text style={[s.removeTxt, { color: C.danger }]}>✕</Text>
-                  </Pressable>
+                  </Tap>
                 </View>
               ))}
 
-              <Pressable style={[s.addBtn, { borderColor: C.primary, backgroundColor: C.primary + '08' }]} onPress={openNewPlayer}>
+              <Tap style={[s.addBtn, { borderColor: C.primary, backgroundColor: C.primary + '08' }]} onPress={openNewPlayer}>
                 <Text style={[s.addTxt, { color: C.primary }]}>{t('edit_group_add_player')}</Text>
-              </Pressable>
+              </Tap>
 
-              <Pressable style={[s.startBtn, { backgroundColor: C.primary, shadowColor: C.primary }]} onPress={saveGroup}>
+              <Tap style={[s.startBtn, { backgroundColor: C.primary, shadowColor: C.primary }]} onPress={saveGroup}>
                 <Text style={s.startTxt}>{t('edit_group_save')}</Text>
-              </Pressable>
+              </Tap>
 
               {!isNew && (
-                <Pressable style={[s.deleteBtn, { borderColor: C.danger }]} onPress={confirmDeleteGroup}>
+                <Tap style={[s.deleteBtn, { borderColor: C.danger }]} onPress={confirmDeleteGroup}>
                   <Text style={[s.deleteBtnTxt, { color: C.danger }]}>{t('roster_delete')}</Text>
-                </Pressable>
+                </Tap>
               )}
             </ScrollView>
           </TabletContainer>
@@ -525,13 +526,13 @@ export default function SetupScreen({ navigation }) {
         <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <TabletContainer>
           <View style={[s.header, { borderBottomColor: C.cardBorder }]}>
-            <Pressable onPress={() => setView('editGroup')}>
+            <Tap onPress={() => setView('editGroup')}>
               <Text style={[s.backBtn, { color: C.primary }]}>{t('setup_back')}</Text>
-            </Pressable>
+            </Tap>
             <Text style={[s.headerTitle, { color: C.text }]}>{t('edit_player_title')}</Text>
-            <Pressable onPress={savePlayer} disabled={!canSavePlayer}>
+            <Tap onPress={savePlayer} disabled={!canSavePlayer}>
               <Text style={[s.headerRight, { color: canSavePlayer ? C.primary : C.textDim }]}>{t('edit_player_done')}</Text>
-            </Pressable>
+            </Tap>
           </View>
           <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <View style={[s.playerPreview, { backgroundColor: C.card, borderColor: C.cardBorder }]}>
@@ -555,7 +556,7 @@ export default function SetupScreen({ navigation }) {
                   {g.items.map(a => {
                     const sel = activePlayer?.avatarId === a.id;
                     return (
-                      <Pressable
+                      <Tap
                         key={a.id}
                         style={[s.avatarOpt, {
                           backgroundColor: sel ? C.primary + '33' : C.card,
@@ -565,16 +566,16 @@ export default function SetupScreen({ navigation }) {
                         onPress={() => setActivePlayer(p => ({ ...p, avatarId: a.id }))}
                       >
                         <Text style={s.avatarOptEmoji}>{a.emoji}</Text>
-                      </Pressable>
+                      </Tap>
                     );
                   })}
                 </View>
               </View>
             ))}
 
-            <Pressable style={[s.startBtn, { backgroundColor: canSavePlayer ? C.primary : C.textDim, shadowColor: C.primary }]} onPress={savePlayer}>
+            <Tap style={[s.startBtn, { backgroundColor: canSavePlayer ? C.primary : C.textDim, shadowColor: C.primary }]} onPress={savePlayer}>
               <Text style={s.startTxt}>{t('edit_player_done')}</Text>
-            </Pressable>
+            </Tap>
           </ScrollView>
         </TabletContainer>
         </KeyboardAvoidingView>
