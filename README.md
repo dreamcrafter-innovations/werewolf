@@ -1,4 +1,6 @@
 # 🌕 Werewolf
+
+> **Build & agents:** run `make help`. Repo context, commands, translation checks and the release checklist live in [AGENTS.md](AGENTS.md).
 ### A Haunted Indian Village Werewolf Game
 
 > *"Gaon mein kuch toh hai..."*

@@ -77,3 +77,9 @@ coverage/
 # local excluded work
 _stage/
 _to_delete/
+
+# dreamcrafters CI kit
+.build/
+local.mk
+*service-account*.json
+google-play-key*.json

@@ -1,0 +1,4 @@
+# dreamcrafters CI kit — hooks/Makefile must keep LF on Windows
+Makefile text eol=lf
+.githooks/* text eol=lf
+*.yml text eol=lf

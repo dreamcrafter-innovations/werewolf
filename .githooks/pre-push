@@ -1,0 +1,6 @@
+#!/bin/sh
+# Enabled by `make hooks`. Lints before every push so GitHub CI can leave lint off.
+# Skip once with: git push --no-verify
+cd "$(git rev-parse --show-toplevel)" || exit 1
+echo "pre-push: npm run lint"
+npm run lint --silent
