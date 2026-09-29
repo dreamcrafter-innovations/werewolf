@@ -26,6 +26,8 @@ export function SceneNightWake({ C }) {
   const glow = useLoop(1400);
   const scale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] });
   const opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+  // Fixed-length literal array: hook call order never changes between renders.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const dots = [0, 260, 520, 780].map((delay) => useLoop(500, delay));
 
   return (
@@ -53,6 +55,8 @@ export function SceneNightWake({ C }) {
 /** Day phase: votes stacking up one at a time toward a majority. */
 export function SceneVoteTally({ C }) {
   const bars = [0, 1, 2, 3, 4];
+  // Fixed-length literal array: hook call order never changes between renders.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const anims = bars.map((i) => useLoop(320, i * 180));
   const heights = [18, 30, 22, 40, 26];
 
