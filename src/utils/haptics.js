@@ -9,6 +9,7 @@
 // from there.
 import * as Haptics from 'expo-haptics';
 import { loadSettings } from '../storage';
+import { setHapticsEnabled as setKitHaptics } from '../components/haptics';
 
 let hapticsEnabled = true; // optimistic default, matches SettingsScreen's initial state
 let loaded = false;
@@ -18,6 +19,7 @@ async function ensureLoaded() {
   try {
     const s = await loadSettings();
     hapticsEnabled = s?.hapticsEnabled ?? true;
+    if (!hapticsEnabled) setKitHaptics(false); // older saved choice carries over to the shared switch
   } catch (_) {
     // keep default
   } finally {
@@ -31,6 +33,7 @@ ensureLoaded();
 export function setHapticsEnabledCache(value) {
   hapticsEnabled = value;
   loaded = true;
+  setKitHaptics(value);
 }
 
 function fire(fn) {
